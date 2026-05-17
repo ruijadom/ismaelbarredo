@@ -6,6 +6,7 @@ import {useEffect, useRef, useState} from 'react'
 
 interface AudioEngineProps {
   scrollProgress:  React.MutableRefObject<number>
+  mousePosition?:  React.MutableRefObject<{x: number; y: number}>
   inContent?:      boolean
   onRegisterFade?: (fadeOut: () => void) => void
 }
@@ -14,6 +15,12 @@ interface AudioEngineProps {
 //
 //  ON LOAD      → Hopeful A-major pad plays (calm, open, luminous).
 //                 Starts the moment the user first interacts (scroll / click).
+//
+//  MOUSE        → X axis: morphs chord voicing — left emphasises the open 5th
+//                 (A+E, spacious, ambiguous), right blooms the major 9th
+//                 (C#+B, warm, hopeful). Y axis: filter brightness — top = airy,
+//                 bottom = dark and intimate. All changes interpolate slowly
+//                 (τ ≈ 1 s) so the sound breathes with the listener's gesture.
 //
 //  SCROLLING    → As introProgress rises (0→1), the pad fades progressively
 //                 to silence. The journey into darkness is also a journey
@@ -42,16 +49,30 @@ function makePinkNoise(ctx: AudioContext, duration = 5): AudioBufferSourceNode {
   return src
 }
 
+// ─── Voice gain tables ───────────────────────────────────────────────────────
+// Five voices: A3 · C#4 · E4 · B4 · E5
+// Mouse X = 0 (left)  → open fifth: root + 5th carry, 3rd/9th recede
+// Mouse X = 1 (right) → full bloom: 3rd and 9th rise, the "hope" opens up
+
+const GAINS_LEFT  = [0.22, 0.07, 0.20, 0.06, 0.03]
+const GAINS_RIGHT = [0.10, 0.22, 0.11, 0.22, 0.10]
+
 // ─── AudioEngine ──────────────────────────────────────────────────────────────
 
-export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}: AudioEngineProps) {
-  const ctxRef        = useRef<AudioContext | null>(null)
-  const masterRef     = useRef<GainNode | null>(null)
-  const padGainRef    = useRef<GainNode | null>(null)
-  const seaGainRef    = useRef<GainNode | null>(null)
-  const rafRef        = useRef<number>(0)
-  const stopablesRef  = useRef<AudioScheduledSourceNode[]>([])
+export function AudioEngine({scrollProgress, mousePosition, inContent = false, onRegisterFade}: AudioEngineProps) {
+  const ctxRef         = useRef<AudioContext | null>(null)
+  const masterRef      = useRef<GainNode | null>(null)
+  const padGainRef     = useRef<GainNode | null>(null)
+  const padFilterRef   = useRef<BiquadFilterNode | null>(null)
+  const voiceGainsRef  = useRef<GainNode[]>([])
+  const seaGainRef     = useRef<GainNode | null>(null)
+  const rafRef         = useRef<number>(0)
+  const stopablesRef   = useRef<AudioScheduledSourceNode[]>([])
   const initializedRef = useRef(false)
+
+  // Smoothed normalised mouse coords (0–1 each), updated in RAF
+  const smoothNxRef = useRef(0.5)  // 0=left, 1=right
+  const smoothNyRef = useRef(0.5)  // 0=bottom, 1=top
 
   const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -98,33 +119,39 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     reverb.connect(rvGain); rvGain.connect(master)
 
     // ── HOPEFUL PAD — A major 9th ────────────────────────────────────────────
-    // A3·C#4·E4·B4·E5 — triangle waves, warm overtones, lifted by the 9th (B4)
+    // A3 · C#4 · E4 · B4 · E5 — triangle waves, warm overtones
+    // Voice gains are morphed by mouse X in the RAF loop below
     const padGain   = ctx.createGain(); padGain.gain.value = 1.0
     const padFilter = ctx.createBiquadFilter()
-    padFilter.type = 'lowpass'; padFilter.frequency.value = 5500; padFilter.Q.value = 0.4
+    padFilter.type = 'lowpass'; padFilter.frequency.value = 4000; padFilter.Q.value = 0.4
 
     const padNotes: [number, number, number][] = [
-      [220,   0.18, 0],    // A3
-      [277.2, 0.20, 3],    // C#4
-      [329.6, 0.16, -2],   // E4
-      [493.9, 0.15, 5],    // B4 (9th — the "hope")
-      [659.3, 0.07, -4],   // E5 (shimmer)
+      [220,   GAINS_LEFT[0], 0],    // A3
+      [277.2, GAINS_LEFT[1], 3],    // C#4
+      [329.6, GAINS_LEFT[2], -2],   // E4
+      [493.9, GAINS_LEFT[3], 5],    // B4 (9th — the "hope")
+      [659.3, GAINS_LEFT[4], -4],   // E5 (shimmer)
     ]
+
+    const voiceGains: GainNode[] = []
     padNotes.forEach(([freq, lvl, dt]) => {
       const o = track(ctx.createOscillator())
       const g = ctx.createGain()
       o.type = 'triangle'; o.frequency.value = freq; o.detune.value = dt
       g.gain.value = lvl
       o.connect(g); g.connect(padFilter); o.start()
+      voiceGains.push(g)
     })
+    voiceGainsRef.current = voiceGains
+    padFilterRef.current  = padFilter
 
-    // Vibrato on B4 for warmth
+    // Vibrato on B4 for warmth (stays fixed — not mouse-morphed)
     const vibOsc = track(ctx.createOscillator())
     vibOsc.type = 'sine'; vibOsc.frequency.value = 3.6
     const vibMod = ctx.createGain(); vibMod.gain.value = 3.5
     const vibNote = track(ctx.createOscillator())
     vibNote.type = 'triangle'; vibNote.frequency.value = 493.9; vibNote.detune.value = -8
-    const vibNoteG = ctx.createGain(); vibNoteG.gain.value = 0.10
+    const vibNoteG = ctx.createGain(); vibNoteG.gain.value = 0.08
     vibOsc.connect(vibMod); vibMod.connect(vibNote.frequency)
     vibNote.connect(vibNoteG); vibNoteG.connect(padFilter)
     vibOsc.start(); vibNote.start()
@@ -133,13 +160,10 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     padGain.connect(master); padGain.connect(reverb)
     padGainRef.current = padGain
 
-    // ── SEA WAVES — calm ocean, breaking on shore ────────────────────────────
-    // Three noise layers with slow wave-rhythm amplitude modulation.
-    // Wave LFOs at different rates create irregular, natural-feeling surf.
+    // ── SEA WAVES ────────────────────────────────────────────────────────────
     const seaGain = ctx.createGain(); seaGain.gain.value = 0
     seaGainRef.current = seaGain
 
-    // 1. Deep ocean rumble (sub-bass shelf)
     const rumble = track(makePinkNoise(ctx, 7))
     const rumbleLP = ctx.createBiquadFilter()
     rumbleLP.type = 'lowpass'; rumbleLP.frequency.value = 320; rumbleLP.Q.value = 0.7
@@ -147,7 +171,6 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     rumble.connect(rumbleLP); rumbleLP.connect(rumbleG); rumbleG.connect(seaGain)
     rumble.start()
 
-    // 2. Wave wash — mid texture (the "shhhh" of breaking water)
     const wash = track(makePinkNoise(ctx, 6))
     const washBP = ctx.createBiquadFilter()
     washBP.type = 'bandpass'; washBP.frequency.value = 700; washBP.Q.value = 0.45
@@ -155,7 +178,6 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     wash.connect(washBP); washBP.connect(washG); washG.connect(seaGain)
     wash.start()
 
-    // 3. Fine spray — high, airy detail
     const spray = track(makePinkNoise(ctx, 5))
     const sprayBP = ctx.createBiquadFilter()
     sprayBP.type = 'bandpass'; sprayBP.frequency.value = 3200; sprayBP.Q.value = 0.6
@@ -163,11 +185,10 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     spray.connect(sprayBP); sprayBP.connect(sprayG); sprayG.connect(seaGain)
     spray.start()
 
-    // Wave rhythms — three LFOs at different speeds create irregular surf
     const waveLFOs: [number, number][] = [
-      [0.11, 0.38],  // primary swell (~9 s)
-      [0.07, 0.20],  // secondary swell (~14 s)
-      [0.19, 0.12],  // small chop (~5 s)
+      [0.11, 0.38],
+      [0.07, 0.20],
+      [0.19, 0.12],
     ]
     waveLFOs.forEach(([rate, depth]) => {
       const lfo = track(ctx.createOscillator())
@@ -179,17 +200,49 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
 
     seaGain.connect(reverb); seaGain.connect(master)
 
-    // ── Scroll-reactive pad fade (RAF loop) ──────────────────────────────────
-    // introProgress 0→1 maps to padGain 1→0 (linear, smooth)
-    // Once inContent, pad is already 0 — this just maintains it
+    // ── RAF loop ─────────────────────────────────────────────────────────────
+    // Handles both scroll-reactive pad fade AND mouse-reactive timbre morphing.
     const tick = () => {
-      if (padGainRef.current && ctx.state !== 'closed') {
-        const p      = Math.min(1, Math.max(0, scrollProgress.current))
-        const target = Math.pow(1 - p, 1.6)  // slightly curved fade
-        const curr   = padGainRef.current.gain.value
-        // Gentle lag (not instant) so it feels like breathing with the scroll
-        padGainRef.current.gain.value = curr + (target - curr) * 0.04
+      if (ctx.state !== 'closed') {
+
+        // 1. Scroll fade: pad gain 1→0 as intro progresses
+        if (padGainRef.current) {
+          const p      = Math.min(1, Math.max(0, scrollProgress.current))
+          const target = Math.pow(1 - p, 1.6)
+          const curr   = padGainRef.current.gain.value
+          padGainRef.current.gain.value = curr + (target - curr) * 0.04
+        }
+
+        // 2. Mouse morphing: chord voicing + filter brightness
+        //    τ ≈ 40 frames (~0.67 s at 60 fps) — slow enough to feel like breathing
+        if (mousePosition) {
+          const m  = mousePosition.current
+          // Normalise to 0–1
+          const nx = (m.x + 1) / 2   // 0=left, 1=right
+          const ny = (m.y + 1) / 2   // 0=bottom, 1=top
+
+          // Exponential smoothing (factor 0.025 ≈ τ of 40 frames)
+          smoothNxRef.current += (nx - smoothNxRef.current) * 0.025
+          smoothNyRef.current += (ny - smoothNyRef.current) * 0.025
+
+          const snx = smoothNxRef.current
+          const sny = smoothNyRef.current
+
+          // Morph voice gains: X=0 → open 5th feel, X=1 → 9th bloom
+          voiceGainsRef.current.forEach((g, i) => {
+            const tgt = GAINS_LEFT[i] + (GAINS_RIGHT[i] - GAINS_LEFT[i]) * snx
+            g.gain.value += (tgt - g.gain.value) * 0.025
+          })
+
+          // Filter brightness: Y=top → 7000 Hz (airy), Y=bottom → 1800 Hz (dark)
+          if (padFilterRef.current) {
+            const tgtHz = 1800 + sny * 5200
+            padFilterRef.current.frequency.value +=
+              (tgtHz - padFilterRef.current.frequency.value) * 0.03
+          }
+        }
       }
+
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -202,15 +255,13 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
     const onInteract = () => { initAudio() }
     const opts = {once: true, passive: true} as const
 
-    // Try immediately (works in browsers that allow audio without gesture — e.g. mobile in some contexts)
-    // Then fall back to first scroll/touch/click
-    window.addEventListener('scroll', onInteract, opts)
-    window.addEventListener('click',  onInteract, opts)
+    window.addEventListener('scroll',     onInteract, opts)
+    window.addEventListener('click',      onInteract, opts)
     window.addEventListener('touchstart', onInteract, opts)
 
     return () => {
-      window.removeEventListener('scroll', onInteract)
-      window.removeEventListener('click',  onInteract)
+      window.removeEventListener('scroll',     onInteract)
+      window.removeEventListener('click',      onInteract)
       window.removeEventListener('touchstart', onInteract)
       cancelAnimationFrame(rafRef.current)
       stopablesRef.current.forEach(n => { try { n.stop() } catch(_) {} })
@@ -229,16 +280,13 @@ export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}:
 
     const t = ctx.currentTime
     if (inContent) {
-      // Pad is already faded by scroll; ensure it's silent
       if (padGainRef.current) {
         padGainRef.current.gain.cancelScheduledValues(t)
         padGainRef.current.gain.linearRampToValueAtTime(0, t + 2)
       }
-      // Gently raise master and sea
       master.gain.linearRampToValueAtTime(0.18, t + 4)
       seaG.gain.linearRampToValueAtTime(0.75, t + 8)
     } else {
-      // Back in intro — silence sea, restore pad via RAF loop
       seaG.gain.linearRampToValueAtTime(0, t + 3)
     }
   }, [inContent])

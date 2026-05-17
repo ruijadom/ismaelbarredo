@@ -225,6 +225,7 @@ export function IntroAnimation() {
       {/* ── Audio engine ── */}
       <AudioEngine
         scrollProgress={scrollProgressRef}
+        mousePosition={mouseRef}
         inContent={inContent}
         onRegisterFade={(fn) => { audioFadeRef.current = fn }}
       />

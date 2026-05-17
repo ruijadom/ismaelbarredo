@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import {Fragment} from 'react'
 import {useLang} from '@/app/components/LanguageContext'
 
 // ─── Content ──────────────────────────────────────────────────────────────────
@@ -250,10 +251,10 @@ export function InvisiblesContent() {
           <p className="eyebrow">{c.ficha.eyebrow}</p>
           <dl className="ficha">
             {c.ficha.rows.map(({dt, dd}) => (
-              <>
-                <dt key={`dt-${dt}`}>{dt}</dt>
-                <dd key={`dd-${dt}`}>{dd}</dd>
-              </>
+              <Fragment key={dt}>
+                <dt>{dt}</dt>
+                <dd>{dd}</dd>
+              </Fragment>
             ))}
           </dl>
         </div>

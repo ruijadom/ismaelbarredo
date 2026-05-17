@@ -3,9 +3,8 @@
 import {useEffect, useRef, useState} from 'react'
 
 // ─── SeaAudio ─────────────────────────────────────────────────────────────────
-// Standalone calm-sea sound component for pages that always want ocean ambience.
-// Starts on first user interaction (scroll / click / touch).
-// Used on the /about page and any route outside the intro animation.
+// Production-safe: builds the graph on first interaction, then keeps listeners
+// alive until the AudioContext is confirmed 'running' (handles iOS suspend).
 
 function makePinkNoise(ctx: AudioContext, duration = 5): AudioBufferSourceNode {
   const len = ctx.sampleRate * duration
@@ -25,36 +24,28 @@ function makePinkNoise(ctx: AudioContext, duration = 5): AudioBufferSourceNode {
 }
 
 export function SeaAudio() {
-  const masterRef      = useRef<GainNode | null>(null)
-  const ctxRef         = useRef<AudioContext | null>(null)
-  const stopablesRef   = useRef<AudioScheduledSourceNode[]>([])
-  const initializedRef = useRef(false)
+  const masterRef    = useRef<GainNode | null>(null)
+  const ctxRef       = useRef<AudioContext | null>(null)
+  const stopablesRef = useRef<AudioScheduledSourceNode[]>([])
+  const graphBuilt   = useRef(false)
 
   const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(false)
 
-  const initAudio = () => {
-    if (initializedRef.current) return
-    initializedRef.current = true
-
-    const AudioCtx = window.AudioContext ||
-      (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext!
-    const ctx = new AudioCtx()
-    ctxRef.current = ctx
-    if (ctx.state === 'suspended') ctx.resume()
+  const buildGraph = (ctx: AudioContext) => {
+    if (graphBuilt.current) return
+    graphBuilt.current = true
 
     const track = <T extends AudioScheduledSourceNode>(n: T): T => {
       stopablesRef.current.push(n); return n
     }
 
-    // ── Master (fades in gently) ─────────────────────────────────────────
     const master = ctx.createGain()
     master.gain.setValueAtTime(0, ctx.currentTime)
     master.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 6)
     master.connect(ctx.destination)
     masterRef.current = master
 
-    // ── Reverb ───────────────────────────────────────────────────────────
     const reverb = ctx.createConvolver()
     const rLen   = ctx.sampleRate * 7
     const rBuf   = ctx.createBuffer(2, rLen, ctx.sampleRate)
@@ -66,12 +57,9 @@ export function SeaAudio() {
     const rvG = ctx.createGain(); rvG.gain.value = 0.50
     reverb.connect(rvG); rvG.connect(master)
 
-    // ── Sea gain (all layers routed here) ────────────────────────────────
-    const seaGain = ctx.createGain()
-    seaGain.gain.value = 0.80
+    const seaGain = ctx.createGain(); seaGain.gain.value = 0.80
     seaGain.connect(master); seaGain.connect(reverb)
 
-    // 1. Deep ocean rumble
     const rumble   = track(makePinkNoise(ctx, 7))
     const rumbleLP = ctx.createBiquadFilter()
     rumbleLP.type = 'lowpass'; rumbleLP.frequency.value = 320; rumbleLP.Q.value = 0.7
@@ -79,7 +67,6 @@ export function SeaAudio() {
     rumble.connect(rumbleLP); rumbleLP.connect(rumbleG); rumbleG.connect(seaGain)
     rumble.start()
 
-    // 2. Wave wash — mid
     const wash   = track(makePinkNoise(ctx, 6))
     const washBP = ctx.createBiquadFilter()
     washBP.type = 'bandpass'; washBP.frequency.value = 700; washBP.Q.value = 0.45
@@ -87,7 +74,6 @@ export function SeaAudio() {
     wash.connect(washBP); washBP.connect(washG); washG.connect(seaGain)
     wash.start()
 
-    // 3. Fine spray — high
     const spray   = track(makePinkNoise(ctx, 5))
     const sprayBP = ctx.createBiquadFilter()
     sprayBP.type = 'bandpass'; sprayBP.frequency.value = 3200; sprayBP.Q.value = 0.6
@@ -95,11 +81,10 @@ export function SeaAudio() {
     spray.connect(sprayBP); sprayBP.connect(sprayG); sprayG.connect(seaGain)
     spray.start()
 
-    // Wave LFOs — three at different rates for irregular surf
     const waveLFOs: [number, number][] = [
-      [0.11, 0.38],   // primary swell ~9 s
-      [0.07, 0.20],   // secondary swell ~14 s
-      [0.19, 0.12],   // small chop ~5 s
+      [0.11, 0.38],
+      [0.07, 0.20],
+      [0.19, 0.12],
     ]
     waveLFOs.forEach(([rate, depth]) => {
       const lfo = track(ctx.createOscillator())
@@ -113,20 +98,49 @@ export function SeaAudio() {
   }
 
   useEffect(() => {
-    const opts = {once: true, passive: true} as const
-    const go   = () => initAudio()
+    const AudioCtx = (window.AudioContext ||
+      (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext) as
+      typeof AudioContext | undefined
+    if (!AudioCtx) return
 
-    window.addEventListener('scroll',     go, opts)
-    window.addEventListener('click',      go, opts)
-    window.addEventListener('touchstart', go, opts)
+    let removeListeners: () => void
 
-    // Try immediately in case context was already unlocked (e.g. navigated from home)
-    try { initAudio() } catch(_) {}
+    const onInteract = () => {
+      try {
+        // Create context on first interaction
+        if (!ctxRef.current) {
+          ctxRef.current = new AudioCtx()
+        }
+        const ctx = ctxRef.current
+
+        // Always attempt resume — safe to call repeatedly
+        if (ctx.state === 'suspended') {
+          ctx.resume()
+        }
+
+        // Build the graph once context exists (oscillators queue until running)
+        buildGraph(ctx)
+
+        // Once running, we no longer need the listeners
+        if (ctx.state === 'running') {
+          removeListeners()
+        }
+      } catch (_) {}
+    }
+
+    removeListeners = () => {
+      window.removeEventListener('scroll',     onInteract)
+      window.removeEventListener('click',      onInteract)
+      window.removeEventListener('touchstart', onInteract)
+    }
+
+    // Passive: fine for scroll/touch; lets the browser optimise scrolling
+    window.addEventListener('scroll',     onInteract, {passive: true})
+    window.addEventListener('click',      onInteract, {passive: true})
+    window.addEventListener('touchstart', onInteract, {passive: true})
 
     return () => {
-      window.removeEventListener('scroll',     go)
-      window.removeEventListener('click',      go)
-      window.removeEventListener('touchstart', go)
+      removeListeners()
       stopablesRef.current.forEach(n => { try { n.stop() } catch(_) {} })
       stopablesRef.current = []
       ctxRef.current?.close()
@@ -138,6 +152,8 @@ export function SeaAudio() {
     const ctx    = ctxRef.current
     const master = masterRef.current
     if (!ctx || !master) return
+    // Mute click is always a user gesture — good time to resume if still suspended
+    if (ctx.state === 'suspended') ctx.resume()
     master.gain.linearRampToValueAtTime(muted ? 0.20 : 0, ctx.currentTime + 0.6)
     setMuted(m => !m)
   }

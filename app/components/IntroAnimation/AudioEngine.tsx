@@ -60,35 +60,27 @@ const GAINS_RIGHT = [0.10, 0.22, 0.11, 0.22, 0.10]
 // ─── AudioEngine ──────────────────────────────────────────────────────────────
 
 export function AudioEngine({scrollProgress, mousePosition, inContent = false, onRegisterFade}: AudioEngineProps) {
-  const ctxRef         = useRef<AudioContext | null>(null)
-  const masterRef      = useRef<GainNode | null>(null)
-  const padGainRef     = useRef<GainNode | null>(null)
-  const padFilterRef   = useRef<BiquadFilterNode | null>(null)
-  const voiceGainsRef  = useRef<GainNode[]>([])
-  const seaGainRef     = useRef<GainNode | null>(null)
-  const rafRef         = useRef<number>(0)
-  const stopablesRef   = useRef<AudioScheduledSourceNode[]>([])
-  const initializedRef = useRef(false)
+  const ctxRef        = useRef<AudioContext | null>(null)
+  const masterRef     = useRef<GainNode | null>(null)
+  const padGainRef    = useRef<GainNode | null>(null)
+  const padFilterRef  = useRef<BiquadFilterNode | null>(null)
+  const voiceGainsRef = useRef<GainNode[]>([])
+  const seaGainRef    = useRef<GainNode | null>(null)
+  const rafRef        = useRef<number>(0)
+  const stopablesRef  = useRef<AudioScheduledSourceNode[]>([])
+  const graphBuilt    = useRef(false)
 
   // Smoothed normalised mouse coords (0–1 each), updated in RAF
-  const smoothNxRef = useRef(0.5)  // 0=left, 1=right
-  const smoothNyRef = useRef(0.5)  // 0=bottom, 1=top
+  const smoothNxRef = useRef(0.5)
+  const smoothNyRef = useRef(0.5)
 
   const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(false)
 
-  // ── Build audio graph — called on first user interaction ─────────────────
-  const initAudio = () => {
-    if (initializedRef.current) return
-    initializedRef.current = true
-
-    const AudioCtx = window.AudioContext ||
-      (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext!
-    const ctx = new AudioCtx()
-    ctxRef.current = ctx
-
-    const resume = () => { if (ctx.state === 'suspended') ctx.resume() }
-    resume()
+  // ── Build audio graph — called once ctx exists ────────────────────────────
+  const buildGraph = (ctx: AudioContext) => {
+    if (graphBuilt.current) return
+    graphBuilt.current = true
 
     const track = <T extends AudioScheduledSourceNode>(n: T): T => {
       stopablesRef.current.push(n); return n
@@ -250,19 +242,44 @@ export function AudioEngine({scrollProgress, mousePosition, inContent = false, o
     setReady(true)
   }
 
-  // ── First-interaction listener ────────────────────────────────────────────
+  // ── Interaction listeners — kept alive until ctx is running ──────────────
+  // This handles iOS/Safari where the first scroll doesn't count as a gesture:
+  // scroll creates the context (suspended), click/touch then resumes it.
   useEffect(() => {
-    const onInteract = () => { initAudio() }
-    const opts = {once: true, passive: true} as const
+    const AudioCtx = (window.AudioContext ||
+      (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext) as
+      typeof AudioContext | undefined
+    if (!AudioCtx) return
 
-    window.addEventListener('scroll',     onInteract, opts)
-    window.addEventListener('click',      onInteract, opts)
-    window.addEventListener('touchstart', onInteract, opts)
+    let removeListeners: () => void
 
-    return () => {
+    const onInteract = () => {
+      try {
+        if (!ctxRef.current) {
+          ctxRef.current = new AudioCtx()
+        }
+        const ctx = ctxRef.current
+
+        if (ctx.state === 'suspended') ctx.resume()
+
+        buildGraph(ctx)
+
+        if (ctx.state === 'running') removeListeners()
+      } catch (_) {}
+    }
+
+    removeListeners = () => {
       window.removeEventListener('scroll',     onInteract)
       window.removeEventListener('click',      onInteract)
       window.removeEventListener('touchstart', onInteract)
+    }
+
+    window.addEventListener('scroll',     onInteract, {passive: true})
+    window.addEventListener('click',      onInteract, {passive: true})
+    window.addEventListener('touchstart', onInteract, {passive: true})
+
+    return () => {
+      removeListeners()
       cancelAnimationFrame(rafRef.current)
       stopablesRef.current.forEach(n => { try { n.stop() } catch(_) {} })
       stopablesRef.current = []
@@ -296,6 +313,8 @@ export function AudioEngine({scrollProgress, mousePosition, inContent = false, o
     const ctx    = ctxRef.current
     const master = masterRef.current
     if (!ctx || !master) return
+    // Click is always a user gesture — good moment to resume if still suspended
+    if (ctx.state === 'suspended') ctx.resume()
     const target = inContent ? 0.18 : 0.15
     master.gain.linearRampToValueAtTime(muted ? target : 0, ctx.currentTime + 0.6)
     setMuted(m => !m)

@@ -74,6 +74,9 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
   // Fade the entire overlay out as the user scrolls into the site
   const opacity = useTransform(scrollMV, [0, 0.45], [1, 0])
 
+  // Scroll indicator fades out the moment scrolling is detected
+  const scrollIndicatorOpacity = useTransform(scrollMV, [0, 0.05], [1, 0])
+
   const titleDelay = TITLE.length * 0.07
 
   return (
@@ -196,27 +199,55 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
         </motion.button>
       </motion.nav>
 
-      {/* ── Scroll hint — pulses while nav is not yet visible ── */}
-      <motion.div
-        initial={{opacity: 0}}
-        animate={visible && !navVisible ? {opacity: [0, 0, 0.4, 0.2, 0.4]} : {opacity: 0}}
-        transition={{
-          delay: titleDelay + 2.8,
-          duration: 4,
-          repeat: navVisible ? 0 : Infinity,
-          ease: 'easeInOut',
-        }}
-        style={{
-          position: 'absolute',
-          bottom: '3.5rem',
-          fontSize: '0.58rem',
-          letterSpacing: '0.35em',
-          color: 'rgba(195, 190, 215, 0.5)',
-          textTransform: 'uppercase',
-          fontFamily: 'Georgia, serif',
-        }}
-      >
-        {t.enter}
+      {/* ── Scroll indicator ─────────────────────────────────────────────────
+           Sits in flex flow between subtitle and nav.
+           Outer div: fades out as soon as scrollMV > 0 (any scroll).
+           Inner div: fades in after title settles.
+      ── */}
+      <motion.div style={{opacity: scrollIndicatorOpacity, pointerEvents: 'none'}}>
+        <motion.div
+          initial={{opacity: 0}}
+          animate={visible ? {opacity: 1} : {opacity: 0}}
+          transition={{delay: titleDelay + 2.4, duration: 1.8, ease: 'easeOut'}}
+          style={{
+            marginTop:     '3.2rem',
+            display:       'flex',
+            flexDirection: 'column',
+            alignItems:    'center',
+            gap:           '10px',
+          }}
+        >
+          {/* Line track with sliding dot */}
+          <div style={{
+            position:   'relative',
+            width:      '1px',
+            height:     '44px',
+            background: 'rgba(195, 190, 215, 0.12)',
+          }}>
+            <motion.div
+              style={{
+                position:     'absolute',
+                left:         '-1px',
+                width:        '3px',
+                height:       '12px',
+                borderRadius: '2px',
+                background:   'rgba(195, 190, 215, 0.52)',
+              }}
+              animate={{top: ['0%', '70%', '0%']}}
+              transition={{duration: 2.2, repeat: Infinity, ease: [0.45, 0, 0.55, 1]}}
+            />
+          </div>
+
+          <span style={{
+            fontFamily:    'Georgia, serif',
+            fontSize:      '0.49rem',
+            letterSpacing: '0.40em',
+            textTransform: 'lowercase',
+            color:         'rgba(195, 190, 215, 0.28)',
+          }}>
+            scroll
+          </span>
+        </motion.div>
       </motion.div>
     </motion.div>
   )

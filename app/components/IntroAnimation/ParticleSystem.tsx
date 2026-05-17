@@ -249,9 +249,10 @@ export function ParticleSystem({mouseRef, scrollProgress, emergence}: ParticleSy
     uColorWarm:  {value: new THREE.Color('#c8a882')},   // warm amber (zone 2)
   }), [])
 
-  const rayPlane  = useMemo(() => new THREE.Plane(new THREE.Vector3(0,0,1), 0), [])
-  const raycaster = useMemo(() => new THREE.Raycaster(), [])
-  const worldPt   = useMemo(() => new THREE.Vector3(), [])
+  const rayPlane   = useMemo(() => new THREE.Plane(new THREE.Vector3(0,0,1), 0), [])
+  const raycaster  = useMemo(() => new THREE.Raycaster(), [])
+  const worldPt    = useMemo(() => new THREE.Vector3(), [])
+  const mouseVec2  = useMemo(() => new THREE.Vector2(), [])
 
   useFrame(() => {
     const mat = pointsRef.current?.material as THREE.ShaderMaterial | undefined
@@ -262,7 +263,8 @@ export function ParticleSystem({mouseRef, scrollProgress, emergence}: ParticleSy
     mat.uniforms.uEmergence.value = emergence.current
     mat.uniforms.uCameraZ.value   = camera.position.z
 
-    raycaster.setFromCamera(mouseRef.current, camera)
+    mouseVec2.set(mouseRef.current.x, mouseRef.current.y)
+    raycaster.setFromCamera(mouseVec2, camera)
     raycaster.ray.intersectPlane(rayPlane, worldPt)
     ;(mat.uniforms.uMouseWorld.value as THREE.Vector3).lerp(worldPt, 0.06)
   })

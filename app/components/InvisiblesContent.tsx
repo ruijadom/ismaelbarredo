@@ -299,7 +299,26 @@ export function InvisiblesContent() {
       {/* ── Footer ── */}
       <footer className="foot">
         <span>{c.foot.left}</span>
-        <span>{c.foot.right}</span>
+        <a
+          href="https://www.ruijadom.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontFamily:    'var(--serif)',
+            fontSize:      '0.58rem',
+            letterSpacing: '0.28em',
+            textTransform: 'uppercase',
+            color:         'var(--ink-faint)',
+            textDecoration: 'none',
+            transition:    'color 0.3s ease',
+            width:         '100%',
+            marginTop:     '1rem',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-soft)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-faint)' }}
+        >
+          created by ruijadom.com
+        </a>
       </footer>
 
     </div>

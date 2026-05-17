@@ -5,332 +5,255 @@ import {useEffect, useRef, useState} from 'react'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AudioEngineProps {
-  started:          boolean
-  scrollProgress:   React.MutableRefObject<number>
-  /** Called once the audio graph is ready — registers a fade-out function
-   *  that index.tsx can invoke before Tibetan bowl navigation. */
+  scrollProgress:  React.MutableRefObject<number>
+  inContent?:      boolean
   onRegisterFade?: (fadeOut: () => void) => void
 }
 
-// ─── Audio zones — 4 chapters of the invisible illness journey ─────────────────
+// ─── Audio concept ────────────────────────────────────────────────────────────
 //
-//  Zone 0 (0–0.28):   Surface / Emergence
-//    → Low drone, slow breathing, distant. Things are hidden.
+//  ON LOAD      → Hopeful A-major pad plays (calm, open, luminous).
+//                 Starts the moment the user first interacts (scroll / click).
 //
-//  Zone 1 (0.28–0.55): Dark Passage / Descent
-//    → Drone drops, dissonance creeps in. Heartbeat intensifies.
-//    → Breath tightens. Something is wrong but unseen.
+//  SCROLLING    → As introProgress rises (0→1), the pad fades progressively
+//                 to silence. The journey into darkness is also a journey
+//                 into silence — what hurts cannot always be heard.
 //
-//  Zone 2 (0.55–0.82): Interior / The Warmth of Pain
-//    → Warm harmonics. Breath opens. Fragile peace.
-//
-//  Zone 3 (0.82–1.0):  Resolution / Light
-//    → All eerie sounds fade. A soft A-major pad rises slowly.
-//    → Warmth. Stillness. Understanding.
+//  IN CONTENT   → Calm sea with breaking waves washes in slowly.
+//                 Stillness after the journey.
 
-const ZONES = [
-  {filterHz: 350, breathRate: 0.11, breathDepth: 280, lfoRate: 0.11, detune: 0,   noiseGain: 0.018},
-  {filterHz: 180, breathRate: 0.22, breathDepth: 200, lfoRate: 0.22, detune: 25,  noiseGain: 0.032},
-  {filterHz: 500, breathRate: 0.08, breathDepth: 350, lfoRate: 0.08, detune: -10, noiseGain: 0.014},
-  {filterHz: 250, breathRate: 0.04, breathDepth: 100, lfoRate: 0.04, detune: 0,   noiseGain: 0.001},
-]
+// ─── Pink-noise buffer source ─────────────────────────────────────────────────
+
+function makePinkNoise(ctx: AudioContext, duration = 5): AudioBufferSourceNode {
+  const len = ctx.sampleRate * duration
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d   = buf.getChannelData(0)
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1
+    b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759
+    b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856
+    b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980
+    d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + w * 0.5362) * 0.10
+  }
+  const src = ctx.createBufferSource()
+  src.buffer = buf
+  src.loop   = true
+  return src
+}
 
 // ─── AudioEngine ──────────────────────────────────────────────────────────────
 
-export function AudioEngine({started, scrollProgress, onRegisterFade}: AudioEngineProps) {
-  const ctxRef          = useRef<AudioContext | null>(null)
-  const masterRef       = useRef<GainNode | null>(null)
-  const droneFiltersRef = useRef<BiquadFilterNode[]>([])
-  const breathBPRef     = useRef<BiquadFilterNode | null>(null)
-  const breathGainRef   = useRef<GainNode | null>(null)
-  const lfoRef          = useRef<OscillatorNode | null>(null)
-  const lfoGainRef      = useRef<GainNode | null>(null)
-  const oscsRef         = useRef<OscillatorNode[]>([])
-  const pulseTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const zoneIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const currentZoneRef  = useRef<number>(-1)
-  const reverbRef       = useRef<ConvolverNode | null>(null)
-  const padGainRef      = useRef<GainNode | null>(null)
-  const padOscsRef      = useRef<OscillatorNode[]>([])
+export function AudioEngine({scrollProgress, inContent = false, onRegisterFade}: AudioEngineProps) {
+  const ctxRef        = useRef<AudioContext | null>(null)
+  const masterRef     = useRef<GainNode | null>(null)
+  const padGainRef    = useRef<GainNode | null>(null)
+  const seaGainRef    = useRef<GainNode | null>(null)
+  const rafRef        = useRef<number>(0)
+  const stopablesRef  = useRef<AudioScheduledSourceNode[]>([])
+  const initializedRef = useRef(false)
 
+  const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(false)
 
-  useEffect(() => {
-    if (!started) return
+  // ── Build audio graph — called on first user interaction ─────────────────
+  const initAudio = () => {
+    if (initializedRef.current) return
+    initializedRef.current = true
 
-    const AudioCtx = window.AudioContext || (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext!
+    const AudioCtx = window.AudioContext ||
+      (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext!
     const ctx = new AudioCtx()
     ctxRef.current = ctx
-    const now = ctx.currentTime
 
-    // ── Master gain ───────────────────────────────────────────────────────
+    const resume = () => { if (ctx.state === 'suspended') ctx.resume() }
+    resume()
+
+    const track = <T extends AudioScheduledSourceNode>(n: T): T => {
+      stopablesRef.current.push(n); return n
+    }
+
+    // ── Master ──────────────────────────────────────────────────────────────
     const master = ctx.createGain()
-    master.gain.setValueAtTime(0, now)
-    master.gain.linearRampToValueAtTime(0.13, now + 5)
+    master.gain.setValueAtTime(0, ctx.currentTime)
+    master.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 3)
     master.connect(ctx.destination)
     masterRef.current = master
 
-    // Register fade-out function for Tibetan bowl navigation transition
     onRegisterFade?.(() => {
       master.gain.cancelScheduledValues(ctx.currentTime)
-      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.0)
+      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 2)
     })
 
-    // ── Convolution reverb ────────────────────────────────────────────────
-    const makeReverb = (): ConvolverNode => {
-      const conv = ctx.createConvolver()
-      const len  = ctx.sampleRate * 6
-      const buf  = ctx.createBuffer(2, len, ctx.sampleRate)
-      for (let ch = 0; ch < 2; ch++) {
-        const d = buf.getChannelData(ch)
-        for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 1.6)
-      }
-      conv.buffer = buf
-      return conv
+    // ── Reverb ──────────────────────────────────────────────────────────────
+    const reverb = ctx.createConvolver()
+    const rLen   = ctx.sampleRate * 7
+    const rBuf   = ctx.createBuffer(2, rLen, ctx.sampleRate)
+    for (let ch = 0; ch < 2; ch++) {
+      const d = rBuf.getChannelData(ch)
+      for (let i = 0; i < rLen; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/rLen, 1.4)
     }
+    reverb.buffer = rBuf
+    const rvGain = ctx.createGain(); rvGain.gain.value = 0.48
+    reverb.connect(rvGain); rvGain.connect(master)
 
-    const reverb     = makeReverb()
-    const reverbGain = ctx.createGain()
-    reverbGain.gain.value = 0.40
-    reverb.connect(reverbGain)
-    reverbGain.connect(master)
-    reverbRef.current = reverb
-
-    // ── Drone — layered oscillators ────────────────────────────────────────
-    const makeDrone = (freq: number, gainVal: number, detune = 0): [OscillatorNode, BiquadFilterNode] => {
-      const osc  = ctx.createOscillator()
-      const lp   = ctx.createBiquadFilter()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      osc.detune.value    = detune
-      lp.type = 'lowpass'
-      lp.frequency.value = ZONES[0].filterHz
-      lp.Q.value = 1.2
-      gain.gain.value = gainVal
-      osc.connect(lp); lp.connect(gain)
-      gain.connect(master); gain.connect(reverb)
-      osc.start()
-      return [osc, lp]
-    }
-
-    const drones: [OscillatorNode, BiquadFilterNode][] = [
-      makeDrone(27.5,  0.48),
-      makeDrone(55,    0.32),
-      makeDrone(82.4,  0.20,  6),
-      makeDrone(110,   0.14, -9),
-      makeDrone(164.8, 0.07,  3),
-    ]
-    oscsRef.current         = drones.map(d => d[0])
-    droneFiltersRef.current = drones.map(d => d[1])
-
-    // ── Breathing texture ─────────────────────────────────────────────────
-    const noiseLen = ctx.sampleRate * 4
-    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate)
-    const nd       = noiseBuf.getChannelData(0)
-    for (let i = 0; i < noiseLen; i++) nd[i] = Math.random()*2-1
-
-    const noise = ctx.createBufferSource()
-    noise.buffer = noiseBuf
-    noise.loop   = true
-
-    const breathBP = ctx.createBiquadFilter()
-    breathBP.type            = 'bandpass'
-    breathBP.frequency.value = 700
-    breathBP.Q.value         = ZONES[0].breathDepth / 50
-
-    const breathGain = ctx.createGain()
-    breathGain.gain.value = ZONES[0].noiseGain
-
-    const lfo     = ctx.createOscillator()
-    const lfoGain = ctx.createGain()
-    lfo.type = 'sine'
-    lfo.frequency.value = ZONES[0].lfoRate
-    lfoGain.gain.value  = ZONES[0].breathDepth
-
-    lfo.connect(lfoGain)
-    lfoGain.connect(breathBP.frequency)
-    noise.connect(breathBP)
-    breathBP.connect(breathGain)
-    breathGain.connect(master)
-    breathGain.connect(reverb)
-    lfo.start(); noise.start()
-
-    breathBPRef.current   = breathBP
-    breathGainRef.current = breathGain
-    lfoRef.current        = lfo
-    lfoGainRef.current    = lfoGain
-
-    // ── Peaceful pad — A major open voicing (silent until zone 3) ─────────
-    //
-    //  A2 · E3 · A3 · C#4 · E4
-    //  Gentle lowpass + thick reverb → soft ambient wash
-    //
-    const padFreqs   = [110, 164.8, 220, 277.2, 329.6]
-    const padLevels  = [0.30, 0.20, 0.28, 0.15, 0.10]
-    const padDetunes = [0, 4, -3, 5, -2]  // subtle shimmer between oscillators
-
-    const padGain = ctx.createGain()
-    padGain.gain.value = 0
-
+    // ── HOPEFUL PAD — A major 9th ────────────────────────────────────────────
+    // A3·C#4·E4·B4·E5 — triangle waves, warm overtones, lifted by the 9th (B4)
+    const padGain   = ctx.createGain(); padGain.gain.value = 1.0
     const padFilter = ctx.createBiquadFilter()
-    padFilter.type            = 'lowpass'
-    padFilter.frequency.value = 1200
-    padFilter.Q.value         = 0.6
+    padFilter.type = 'lowpass'; padFilter.frequency.value = 5500; padFilter.Q.value = 0.4
 
-    padFreqs.forEach((freq, i) => {
-      const osc   = ctx.createOscillator()
-      const oGain = ctx.createGain()
-      osc.type            = 'sine'
-      osc.frequency.value = freq
-      osc.detune.value    = padDetunes[i]
-      oGain.gain.value    = padLevels[i]
-      osc.connect(oGain)
-      oGain.connect(padFilter)
-      osc.start()
-      padOscsRef.current.push(osc)
+    const padNotes: [number, number, number][] = [
+      [220,   0.18, 0],    // A3
+      [277.2, 0.20, 3],    // C#4
+      [329.6, 0.16, -2],   // E4
+      [493.9, 0.15, 5],    // B4 (9th — the "hope")
+      [659.3, 0.07, -4],   // E5 (shimmer)
+    ]
+    padNotes.forEach(([freq, lvl, dt]) => {
+      const o = track(ctx.createOscillator())
+      const g = ctx.createGain()
+      o.type = 'triangle'; o.frequency.value = freq; o.detune.value = dt
+      g.gain.value = lvl
+      o.connect(g); g.connect(padFilter); o.start()
     })
+
+    // Vibrato on B4 for warmth
+    const vibOsc = track(ctx.createOscillator())
+    vibOsc.type = 'sine'; vibOsc.frequency.value = 3.6
+    const vibMod = ctx.createGain(); vibMod.gain.value = 3.5
+    const vibNote = track(ctx.createOscillator())
+    vibNote.type = 'triangle'; vibNote.frequency.value = 493.9; vibNote.detune.value = -8
+    const vibNoteG = ctx.createGain(); vibNoteG.gain.value = 0.10
+    vibOsc.connect(vibMod); vibMod.connect(vibNote.frequency)
+    vibNote.connect(vibNoteG); vibNoteG.connect(padFilter)
+    vibOsc.start(); vibNote.start()
 
     padFilter.connect(padGain)
-    padGain.connect(reverb)   // deep reverb for spaciousness
-    padGain.connect(master)
+    padGain.connect(master); padGain.connect(reverb)
     padGainRef.current = padGain
 
-    // ── Heartbeat — zone-reactive scheduling ──────────────────────────────
-    const scheduleHeartbeat = (interval: number) => {
-      // Never beat in zone 3 (resolution)
-      if (currentZoneRef.current === 3) return
+    // ── SEA WAVES — calm ocean, breaking on shore ────────────────────────────
+    // Three noise layers with slow wave-rhythm amplitude modulation.
+    // Wave LFOs at different rates create irregular, natural-feeling surf.
+    const seaGain = ctx.createGain(); seaGain.gain.value = 0
+    seaGainRef.current = seaGain
 
-      const bg  = ctx.createGain()
-      const bo  = ctx.createOscillator()
-      const bg2 = ctx.createGain()
-      const bo2 = ctx.createOscillator()
+    // 1. Deep ocean rumble (sub-bass shelf)
+    const rumble = track(makePinkNoise(ctx, 7))
+    const rumbleLP = ctx.createBiquadFilter()
+    rumbleLP.type = 'lowpass'; rumbleLP.frequency.value = 320; rumbleLP.Q.value = 0.7
+    const rumbleG = ctx.createGain(); rumbleG.gain.value = 0.55
+    rumble.connect(rumbleLP); rumbleLP.connect(rumbleG); rumbleG.connect(seaGain)
+    rumble.start()
 
-      bo.frequency.value = 42; bo.type = 'sine'
-      bg.gain.setValueAtTime(0, ctx.currentTime)
-      bg.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 0.06)
-      bg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7)
+    // 2. Wave wash — mid texture (the "shhhh" of breaking water)
+    const wash = track(makePinkNoise(ctx, 6))
+    const washBP = ctx.createBiquadFilter()
+    washBP.type = 'bandpass'; washBP.frequency.value = 700; washBP.Q.value = 0.45
+    const washG = ctx.createGain(); washG.gain.value = 0.45
+    wash.connect(washBP); washBP.connect(washG); washG.connect(seaGain)
+    wash.start()
 
-      bo2.frequency.value = 38; bo2.type = 'sine'
-      bg2.gain.setValueAtTime(0, ctx.currentTime + 0.25)
-      bg2.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.31)
-      bg2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9)
+    // 3. Fine spray — high, airy detail
+    const spray = track(makePinkNoise(ctx, 5))
+    const sprayBP = ctx.createBiquadFilter()
+    sprayBP.type = 'bandpass'; sprayBP.frequency.value = 3200; sprayBP.Q.value = 0.6
+    const sprayG = ctx.createGain(); sprayG.gain.value = 0.18
+    spray.connect(sprayBP); sprayBP.connect(sprayG); sprayG.connect(seaGain)
+    spray.start()
 
-      bo.connect(bg);   bg.connect(master)
-      bo2.connect(bg2); bg2.connect(master)
-      bo.start(); bo.stop(ctx.currentTime + 1.2)
-      bo2.start(); bo2.stop(ctx.currentTime + 1.4)
+    // Wave rhythms — three LFOs at different speeds create irregular surf
+    const waveLFOs: [number, number][] = [
+      [0.11, 0.38],  // primary swell (~9 s)
+      [0.07, 0.20],  // secondary swell (~14 s)
+      [0.19, 0.12],  // small chop (~5 s)
+    ]
+    waveLFOs.forEach(([rate, depth]) => {
+      const lfo = track(ctx.createOscillator())
+      lfo.type = 'sine'; lfo.frequency.value = rate
+      const mod = ctx.createGain(); mod.gain.value = depth
+      lfo.connect(mod); mod.connect(seaGain.gain)
+      lfo.start()
+    })
 
-      pulseTimerRef.current = setTimeout(
-        () => scheduleHeartbeat(interval),
-        interval + Math.random() * 2000
-      )
-    }
-    pulseTimerRef.current = setTimeout(() => scheduleHeartbeat(7000), 10000)
+    seaGain.connect(reverb); seaGain.connect(master)
 
-    // ── Zone transitions ──────────────────────────────────────────────────
-    const transitionTo = (zone: number) => {
-      const now = ctx.currentTime
-
-      if (zone === 3) {
-        // ── Resolution: eerie sounds dissolve, peaceful pad rises ─────────
-
-        // Stop heartbeat permanently
-        if (pulseTimerRef.current) {
-          clearTimeout(pulseTimerRef.current)
-          pulseTimerRef.current = null
-        }
-
-        // Dissolve breathing texture over 8s
-        breathGainRef.current?.gain.linearRampToValueAtTime(0.0001, now + 8.0)
-        lfoRef.current?.frequency.linearRampToValueAtTime(0.02, now + 6.0)
-        lfoGainRef.current?.gain.linearRampToValueAtTime(20, now + 6.0)
-
-        // Very gently fade drone (don't cut it — let it blend with the pad)
-        droneFiltersRef.current.forEach(f => {
-          f.frequency.linearRampToValueAtTime(160, now + 8.0)
-        })
-        oscsRef.current.forEach(osc => {
-          osc.detune.linearRampToValueAtTime(0, now + 5.0)
-        })
-
-        // Lower master slightly (pad adds its own level)
-        master.gain.linearRampToValueAtTime(0.06, now + 6.0)
-
-        // Peaceful pad rises over 9 seconds
-        padGainRef.current?.gain.linearRampToValueAtTime(0.24, now + 9.0)
-
-      } else {
-        const z = ZONES[zone]
-
-        // Fade pad back to silence if user scrolls back
-        padGainRef.current?.gain.linearRampToValueAtTime(0, now + 4.0)
-
-        // Drone filters
-        droneFiltersRef.current.forEach((f, i) => {
-          f.frequency.linearRampToValueAtTime(z.filterHz, now + 2.5)
-          if (i < oscsRef.current.length) {
-            oscsRef.current[i].detune.linearRampToValueAtTime(
-              i === 0 ? 0 : z.detune * (i * 0.8), now + 3.0
-            )
-          }
-        })
-
-        // Breathing
-        lfoRef.current?.frequency.linearRampToValueAtTime(z.lfoRate, now + 4.0)
-        lfoGainRef.current?.gain.linearRampToValueAtTime(z.breathDepth, now + 4.0)
-        breathGainRef.current?.gain.linearRampToValueAtTime(z.noiseGain, now + 3.0)
-
-        // Master volume
-        if (zone === 2) {
-          master.gain.linearRampToValueAtTime(0.15, now + 4.0)
-        } else if (zone === 1) {
-          master.gain.linearRampToValueAtTime(0.11, now + 3.0)
-        } else if (zone === 0 && currentZoneRef.current > 0) {
-          master.gain.linearRampToValueAtTime(0.13, now + 3.0)
-        }
-
-        // Reschedule heartbeat
-        if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
-        const hbInterval = zone === 0 ? 7000 : zone === 1 ? 3500 : 5500
-        if (!muted) scheduleHeartbeat(hbInterval)
+    // ── Scroll-reactive pad fade (RAF loop) ──────────────────────────────────
+    // introProgress 0→1 maps to padGain 1→0 (linear, smooth)
+    // Once inContent, pad is already 0 — this just maintains it
+    const tick = () => {
+      if (padGainRef.current && ctx.state !== 'closed') {
+        const p      = Math.min(1, Math.max(0, scrollProgress.current))
+        const target = Math.pow(1 - p, 1.6)  // slightly curved fade
+        const curr   = padGainRef.current.gain.value
+        // Gentle lag (not instant) so it feels like breathing with the scroll
+        padGainRef.current.gain.value = curr + (target - curr) * 0.04
       }
+      rafRef.current = requestAnimationFrame(tick)
     }
+    rafRef.current = requestAnimationFrame(tick)
 
-    zoneIntervalRef.current = setInterval(() => {
-      const scroll = scrollProgress.current
-      const zone   = scroll < 0.28 ? 0 : scroll < 0.55 ? 1 : scroll < 0.82 ? 2 : 3
-      if (zone !== currentZoneRef.current) {
-        currentZoneRef.current = zone
-        transitionTo(zone)
-      }
-    }, 300)
+    setReady(true)
+  }
+
+  // ── First-interaction listener ────────────────────────────────────────────
+  useEffect(() => {
+    const onInteract = () => { initAudio() }
+    const opts = {once: true, passive: true} as const
+
+    // Try immediately (works in browsers that allow audio without gesture — e.g. mobile in some contexts)
+    // Then fall back to first scroll/touch/click
+    window.addEventListener('scroll', onInteract, opts)
+    window.addEventListener('click',  onInteract, opts)
+    window.addEventListener('touchstart', onInteract, opts)
 
     return () => {
-      if (pulseTimerRef.current)   clearTimeout(pulseTimerRef.current)
-      if (zoneIntervalRef.current) clearInterval(zoneIntervalRef.current)
-      oscsRef.current.forEach(o   => { try { o.stop() } catch(_) {} })
-      padOscsRef.current.forEach(o => { try { o.stop() } catch(_) {} })
-      try { lfoRef.current?.stop(); noise.stop() } catch(_) {}
-      ctx.close()
+      window.removeEventListener('scroll', onInteract)
+      window.removeEventListener('click',  onInteract)
+      window.removeEventListener('touchstart', onInteract)
+      cancelAnimationFrame(rafRef.current)
+      stopablesRef.current.forEach(n => { try { n.stop() } catch(_) {} })
+      stopablesRef.current = []
+      ctxRef.current?.close()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started])
+  }, [])
 
+  // ── Sea waves: activate when inContent changes ────────────────────────────
+  useEffect(() => {
+    const ctx    = ctxRef.current
+    const seaG   = seaGainRef.current
+    const master = masterRef.current
+    if (!ctx || !seaG || !master) return
+
+    const t = ctx.currentTime
+    if (inContent) {
+      // Pad is already faded by scroll; ensure it's silent
+      if (padGainRef.current) {
+        padGainRef.current.gain.cancelScheduledValues(t)
+        padGainRef.current.gain.linearRampToValueAtTime(0, t + 2)
+      }
+      // Gently raise master and sea
+      master.gain.linearRampToValueAtTime(0.18, t + 4)
+      seaG.gain.linearRampToValueAtTime(0.75, t + 8)
+    } else {
+      // Back in intro — silence sea, restore pad via RAF loop
+      seaG.gain.linearRampToValueAtTime(0, t + 3)
+    }
+  }, [inContent])
+
+  // ── Toggle mute ──────────────────────────────────────────────────────────
   const toggleMute = () => {
     const ctx    = ctxRef.current
     const master = masterRef.current
     if (!ctx || !master) return
-    const targetGain = currentZoneRef.current === 3 ? 0.06 : 0.13
-    if (muted) {
-      master.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.6)
-    } else {
-      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6)
-    }
+    const target = inContent ? 0.18 : 0.15
+    master.gain.linearRampToValueAtTime(muted ? target : 0, ctx.currentTime + 0.6)
     setMuted(m => !m)
   }
 
-  if (!started) return null
+  if (!ready) return null
 
   return (
     <button
@@ -341,8 +264,8 @@ export function AudioEngine({started, scrollProgress, onRegisterFade}: AudioEngi
         bottom:        '2rem',
         right:         '2rem',
         background:    'transparent',
-        border:        '1px solid rgba(255,255,255,0.13)',
-        color:         'rgba(200,196,215,0.45)',
+        border:        `1px solid ${inContent ? 'rgba(90,76,62,0.18)' : 'rgba(255,255,255,0.13)'}`,
+        color:         inContent ? 'rgba(90,76,62,0.38)' : 'rgba(200,196,215,0.42)',
         padding:       '0.5rem 1.1rem',
         cursor:        'pointer',
         fontFamily:    'Georgia, serif',
@@ -350,10 +273,16 @@ export function AudioEngine({started, scrollProgress, onRegisterFade}: AudioEngi
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
         zIndex:        200,
-        transition:    'color 0.4s ease',
+        transition:    'color 0.4s ease, border-color 0.4s ease',
       }}
-      onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,196,215,0.9)')}
-      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,196,215,0.45)')}
+      onMouseEnter={e => {
+        const b = e.currentTarget as HTMLButtonElement
+        b.style.color = inContent ? 'rgba(90,76,62,0.85)' : 'rgba(200,196,215,0.9)'
+      }}
+      onMouseLeave={e => {
+        const b = e.currentTarget as HTMLButtonElement
+        b.style.color = inContent ? 'rgba(90,76,62,0.38)' : 'rgba(200,196,215,0.42)'
+      }}
     >
       {muted ? 'sound on' : 'sound off'}
     </button>

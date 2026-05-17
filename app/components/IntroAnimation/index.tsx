@@ -6,7 +6,6 @@ import {useRouter} from 'next/navigation'
 import dynamic from 'next/dynamic'
 import {Typography} from './Typography'
 import {AudioEngine} from './AudioEngine'
-import {playHangDrum} from './hangDrum'
 import {useLang} from '@/app/components/LanguageContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,14 +36,15 @@ export function IntroAnimation() {
   const emergenceRef      = useRef<number>(0)
   const scrollMV          = useMotionValue(0)
   const audioFadeRef      = useRef<(() => void) | null>(null)
+  const lenisRef          = useRef<import('lenis').default | null>(null)
 
-  const [audioStarted,  setAudioStarted]  = useState(false)
   const [typoVisible,   setTypoVisible]   = useState(false)
   const [navVisible,    setNavVisible]    = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [lightStage,    setLightStage]    = useState(false)
   const [inContent,     setInContent]     = useState(false)  // past 500 vh spacer
   const lightStageRef         = useRef(false)
+  const lightStageTimeRef     = useRef(0)       // timestamp when Zone 3 first triggered
   const hasEnteredContentRef  = useRef(false)  // stays true after first content entry
 
   const tagline = lang === 'es' ? 'lo que no se ve, también duele' : 'what you cannot see, still hurts'
@@ -70,7 +70,6 @@ export function IntroAnimation() {
       return
     }
     const holdTimer = setTimeout(() => {
-      setAudioStarted(true)
       const start = performance.now()
       let raf: number
       const tick = () => {
@@ -102,6 +101,7 @@ export function IntroAnimation() {
         smoothWheel: true,
         wheelMultiplier: 0.75,
       })
+      lenisRef.current = lenisInstance
       lenisInstance.scrollTo(0, {immediate: true})
 
       lenisInstance.on('scroll', ({scroll}: {scroll: number}) => {
@@ -117,16 +117,8 @@ export function IntroAnimation() {
         // ── Zone 3 forward — cream dissolve at 82 % of intro journey (~410 vh)
         if (introProgress > 0.82 && !lightStageRef.current) {
           lightStageRef.current = true
+          lightStageTimeRef.current = performance.now()
           setLightStage(true)
-
-          // Release the scroll gate 5 s after cream appears (cream fade-in = 6 s)
-          setTimeout(() => {
-            contentUnlocked = true
-            if (scrollLocked) {
-              scrollLocked = false
-              lenisInstance?.start()
-            }
-          }, 5000)
         }
 
         // ── Zone 3 reverse — reset cream when scrolled back below 70 %
@@ -137,10 +129,27 @@ export function IntroAnimation() {
           setLightStage(false)
         }
 
-        // ── Gate — hold scroll at end of spacer until cream is established
+        // ── Gate — hold scroll at end of spacer until cream has been visible long enough
+        // The minimum display time is 1 400 ms. If the user scrolled slowly and Zone 3
+        // has already been showing for longer, we skip the lock entirely and proceed immediately.
         if (introProgress >= 1 && !contentUnlocked && !scrollLocked) {
-          scrollLocked = true
-          lenisInstance?.stop()
+          const elapsed   = performance.now() - lightStageTimeRef.current
+          const MIN_MS    = 1400
+          const remaining = Math.max(0, MIN_MS - elapsed)
+
+          if (remaining === 0) {
+            // Cream already established — unlock right away, no lock needed
+            contentUnlocked = true
+          } else {
+            // Brief pause so the cream has a moment to settle
+            scrollLocked = true
+            lenisInstance?.stop()
+            setTimeout(() => {
+              contentUnlocked = true
+              scrollLocked = false
+              lenisInstance?.start()
+            }, remaining)
+          }
         }
 
         // ── Detect when user has entered the editorial content (past 500 vh)
@@ -156,12 +165,17 @@ export function IntroAnimation() {
     return () => { cancelAnimationFrame(rafId); lenisInstance?.destroy() }
   }, [scrollMV])
 
-  // ── Navigation with bowl sound ────────────────────────────────────────────
-  const navigateWithBowl = useCallback(async (href: string) => {
-    audioFadeRef.current?.()
-    await playHangDrum()
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const navigateWithBowl = useCallback((href: string) => {
     router.push(href)
   }, [router])
+
+  // ── Logo "scroll to intro top" event ─────────────────────────────────────
+  useEffect(() => {
+    const handler = () => lenisRef.current?.scrollTo(0, {duration: 1.6})
+    window.addEventListener('scroll-to-intro', handler)
+    return () => window.removeEventListener('scroll-to-intro', handler)
+  }, [])
 
   // ── Mouse tracking ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -210,8 +224,8 @@ export function IntroAnimation() {
 
       {/* ── Audio engine ── */}
       <AudioEngine
-        started={audioStarted}
         scrollProgress={scrollProgressRef}
+        inContent={inContent}
         onRegisterFade={(fn) => { audioFadeRef.current = fn }}
       />
 

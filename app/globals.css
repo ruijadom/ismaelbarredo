@@ -9,12 +9,12 @@
 :root {
   --bg:        #f4f1ea;
   --bg-deep:   #0a0a0b;
-  --ink:       #3a342d;
-  --ink-soft:  #6b6258;
-  --ink-faint: #a8a094;
-  --rule:      #d9d2c4;
-  --rule-soft: #e8e2d5;
-  --accent:    #2a2520;
+  --ink:       #28231d;   /* was #3a342d — ~25% darker for legibility */
+  --ink-soft:  #544b43;   /* was #6b6258 — proportionally darker */
+  --ink-faint: #8a8276;   /* was #a8a094 — proportionally darker */
+  --rule:      #cec7b8;   /* was #d9d2c4 — slightly deeper */
+  --rule-soft: #ddd7c8;   /* was #e8e2d5 — slightly deeper */
+  --accent:    #1e1a16;
   --paper:     #faf7f1;
 
   --serif:         "Cormorant Garamond", "EB Garamond", Georgia, serif;
@@ -373,6 +373,7 @@ img { display: block; max-width: 100%; }
   border-top: 1px solid var(--rule-soft);
   padding: 48px var(--gutter) 80px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   font-family: var(--serif);

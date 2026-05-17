@@ -57,10 +57,16 @@ export default function GlobalHeader() {
 
   return (
     <header className="chrome-header" data-state={state}>
-      {/* Wordmark */}
+      {/* Wordmark — scrolls to intro top on home, navigates on other pages */}
       <button
         className="chrome-wordmark"
-        onClick={() => { router.push('/') }}
+        onClick={() => {
+          if (pathname === '/') {
+            window.dispatchEvent(new CustomEvent('scroll-to-intro'))
+          } else {
+            router.push('/')
+          }
+        }}
         aria-label="Invisibles — ir al inicio"
       >
         invisibles

@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import {useState, useEffect, useCallback} from 'react'
 import {useLang} from '@/app/components/LanguageContext'
 
 // ─── Content ──────────────────────────────────────────────────────────────────
@@ -22,7 +23,6 @@ const copy = {
     },
     projects: {
       eyebrow:  '— proyectos',
-      title:    'Proyectos',
       rows: [
         {
           num:   '01',
@@ -80,6 +80,11 @@ const copy = {
       left:  'Ismael Barredo · 2026',
       right: 'invisibles — lo que no se ve, también duele',
     },
+    carousel: {
+      close:   'cerrar',
+      verMas:  'ver más',
+      verProj: 'ver proyecto',
+    },
   },
 
   en: {
@@ -98,7 +103,6 @@ const copy = {
     },
     projects: {
       eyebrow:  '— projects',
-      title:    'Projects',
       rows: [
         {
           num:   '01',
@@ -156,14 +160,298 @@ const copy = {
       left:  'Ismael Barredo · 2026',
       right: 'invisibles — what you cannot see, still hurts',
     },
+    carousel: {
+      close:   'close',
+      verMas:  'watch more',
+      verProj: 'view project',
+    },
   },
 } as const
+
+// ─── Photo data (language-independent) ───────────────────────────────────────
+
+const PROJECT_PHOTOS: Record<string, string[]> = {
+  '01': ['/images/invisibles-1.jpg',    '/images/invisibles-2.jpg'],
+  '02': ['/images/handpan-1.webp',      '/images/handpan-2.webp', '/images/handpan-3.webp', '/images/handpan-4.webp'],
+  '03': ['/images/live-looping-1.webp', '/images/live-looping-2.webp', '/images/live-looping-3.webp'],
+  '04': ['/images/ecstatic-dance-1.webp'],
+  '05': ['/images/bio-stage.webp',      '/images/bio-performance.webp'],
+}
+
+// ─── PhotoCarousel ────────────────────────────────────────────────────────────
+
+interface CarouselProps {
+  photos:     string[]
+  name:       string
+  num:        string
+  href:       string
+  arrow:      string
+  verMas:     string
+  verProj:    string
+  closeLabel: string
+  onClose:    () => void
+}
+
+function PhotoCarousel({photos, name, num, href, arrow, verMas, verProj, closeLabel, onClose}: CarouselProps) {
+  const [idx,     setIdx]     = useState(0)
+  const [visible, setVisible] = useState(false)
+
+  // Fade-in on mount
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+
+  const prev = useCallback(() => setIdx(i => (i - 1 + photos.length) % photos.length), [photos.length])
+  const next = useCallback(() => setIdx(i => (i + 1) % photos.length), [photos.length])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape')     onClose()
+      if (e.key === 'ArrowLeft')  prev()
+      if (e.key === 'ArrowRight') next()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose, prev, next])
+
+  // Lock body scroll while open
+  useEffect(() => {
+    const orig = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = orig }
+  }, [])
+
+  const isExternal = href.startsWith('http')
+  const linkLabel  = isExternal ? verMas : verProj
+  const linkSuffix = isExternal ? ' ↗' : ` ${arrow}`
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position:       'fixed',
+        inset:          0,
+        zIndex:         300,
+        background:     `rgba(10,10,11,${visible ? 0.97 : 0})`,
+        display:        'flex',
+        flexDirection:  'column',
+        alignItems:     'center',
+        justifyContent: 'center',
+        transition:     'background 300ms ease',
+      }}
+    >
+
+      {/* ── Top bar ── */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position:   'absolute',
+          top: 0, left: 0, right: 0,
+          padding:    'clamp(18px, 3vw, 30px) clamp(20px, 3.5vw, 36px)',
+          display:    'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          opacity:    visible ? 1 : 0,
+          transition: 'opacity 400ms ease 120ms',
+        }}
+      >
+        <div>
+          <span style={{
+            fontFamily:    'var(--serif)',
+            fontSize:      '11px',
+            letterSpacing: '0.32em',
+            textTransform: 'lowercase',
+            color:         'rgba(244,241,234,0.30)',
+          }}>{num} · </span>
+          <span style={{
+            fontFamily:    'var(--serif)',
+            fontSize:      '13px',
+            letterSpacing: '0.16em',
+            textTransform: 'lowercase',
+            color:         'rgba(244,241,234,0.60)',
+          }}>{name}</span>
+        </div>
+
+        <button
+          onClick={onClose}
+          aria-label={closeLabel}
+          style={{
+            background: 'none',
+            border:     'none',
+            color:      'rgba(244,241,234,0.35)',
+            fontFamily: 'var(--serif)',
+            fontSize:   '26px',
+            lineHeight: 1,
+            cursor:     'pointer',
+            padding:    '4px 8px',
+            transition: 'color 200ms ease',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0.85)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0.35)' }}
+        >×</button>
+      </div>
+
+      {/* ── Image ── */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position:  'relative',
+          width:     'min(1000px, 90vw)',
+          opacity:   visible ? 1 : 0,
+          transform: visible ? 'scale(1)' : 'scale(0.975)',
+          transition:'opacity 380ms ease 80ms, transform 380ms ease 80ms',
+        }}
+      >
+        <div style={{position: 'relative', width: '100%', background: '#0d0d0d', overflow: 'hidden'}}>
+          <Image
+            key={photos[idx]}
+            src={photos[idx]}
+            alt={`${name} ${idx + 1}`}
+            width={1200}
+            height={800}
+            style={{
+              width:     '100%',
+              height:    'auto',
+              maxHeight: '70vh',
+              objectFit: 'contain',
+              display:   'block',
+            }}
+            sizes="min(1000px, 90vw)"
+          />
+
+          {/* Prev / next — over image edges */}
+          {photos.length > 1 && (
+            <>
+              <button
+                onClick={prev}
+                aria-label="Previous"
+                style={{
+                  position:       'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  width:          '22%',
+                  background:     'none',
+                  border:         'none',
+                  cursor:         'pointer',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'flex-start',
+                  paddingLeft:    '20px',
+                  color:          'rgba(244,241,234,0)',
+                  fontSize:       '20px',
+                  fontFamily:     'var(--serif)',
+                  transition:     'color 200ms ease',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0.75)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0)' }}
+              >←</button>
+
+              <button
+                onClick={next}
+                aria-label="Next"
+                style={{
+                  position:       'absolute',
+                  right: 0, top: 0, bottom: 0,
+                  width:          '22%',
+                  background:     'none',
+                  border:         'none',
+                  cursor:         'pointer',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'flex-end',
+                  paddingRight:   '20px',
+                  color:          'rgba(244,241,234,0)',
+                  fontSize:       '20px',
+                  fontFamily:     'var(--serif)',
+                  transition:     'color 200ms ease',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0.75)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(244,241,234,0)' }}
+              >→</button>
+            </>
+          )}
+        </div>
+
+        {/* ── Caption / progress row ── */}
+        <div style={{
+          display:         'flex',
+          justifyContent:  'space-between',
+          alignItems:      'center',
+          marginTop:       '14px',
+          paddingInline:   '2px',
+        }}>
+          {/* Counter */}
+          <span style={{
+            fontFamily:    'var(--serif)',
+            fontSize:      '11px',
+            letterSpacing: '0.32em',
+            textTransform: 'lowercase',
+            color:         'rgba(244,241,234,0.28)',
+            minWidth:      '40px',
+          }}>
+            {String(idx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
+          </span>
+
+          {/* Progress lines */}
+          {photos.length > 1 && (
+            <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+              {photos.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setIdx(i)}
+                  aria-label={`Photo ${i + 1}`}
+                  style={{
+                    width:      i === idx ? '28px' : '8px',
+                    height:     '1px',
+                    background: i === idx ? 'rgba(244,241,234,0.55)' : 'rgba(244,241,234,0.18)',
+                    border:     'none',
+                    padding:    0,
+                    cursor:     'pointer',
+                    transition: 'width 280ms ease, background 280ms ease',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Link */}
+          {href ? (
+            <a
+              href={href}
+              target={isExternal ? '_blank' : undefined}
+              rel={isExternal ? 'noopener noreferrer' : undefined}
+              style={{
+                fontFamily:     'var(--serif)',
+                fontSize:       '11px',
+                letterSpacing:  '0.32em',
+                textTransform:  'lowercase',
+                color:          'rgba(244,241,234,0.32)',
+                textDecoration: 'none',
+                transition:     'color 200ms ease',
+                whiteSpace:     'nowrap',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(244,241,234,0.78)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(244,241,234,0.32)' }}
+            >{linkLabel}{linkSuffix}</a>
+          ) : <span />}
+        </div>
+      </div>
+
+    </div>
+  )
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AboutContent() {
   const {lang} = useLang()
-  const c = copy[lang]
+  const c      = copy[lang]
+
+  const [activeNum, setActiveNum] = useState<string | null>(null)
+
+  const activeRow    = activeNum ? c.projects.rows.find(r => r.num === activeNum) ?? null : null
+  const activePhotos = activeNum ? (PROJECT_PHOTOS[activeNum] ?? []) : []
+
+  const openCarousel  = useCallback((num: string) => setActiveNum(num), [])
+  const closeCarousel = useCallback(() => setActiveNum(null), [])
 
   return (
     <div className="page" id="about-content">
@@ -178,7 +466,7 @@ export function AboutContent() {
       {/* ── Portrait ── */}
       <div className="about-portrait">
         <Image
-          src="/images/bio-stage.jpg"
+          src="/images/bio-stage.webp"
           alt="Ismael Barredo"
           width={900}
           height={600}
@@ -209,29 +497,26 @@ export function AboutContent() {
           </div>
 
           <div className="projects">
-            {c.projects.rows.map(({num, name, sub, desc, href, arrow}) => {
-              const Tag = href ? 'a' : 'div'
-              const linkProps = href
-                ? {href, target: href.startsWith('http') ? '_blank' : undefined, rel: href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                : {}
-              return (
-                <Tag
-                  key={num}
-                  {...(linkProps as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
-                  className={'project-row' + (href ? ' project-row--link' : '')}
-                  style={{textDecoration: 'none', color: 'inherit'}}
-                >
-                  <span className="project-row__num">{num}</span>
-                  <div>
-                    <p className="project-row__name">
-                      {name} <em>{sub}</em>
-                    </p>
-                  </div>
-                  <p className="project-row__desc">{desc}</p>
-                  {arrow && <span className="project-row__arrow">{arrow}</span>}
-                </Tag>
-              )
-            })}
+            {c.projects.rows.map(({num, name, sub, desc, arrow}) => (
+              <div
+                key={num}
+                className="project-row project-row--link"
+                style={{textDecoration: 'none', color: 'inherit', cursor: 'pointer'}}
+                onClick={() => openCarousel(num)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCarousel(num) }}
+              >
+                <span className="project-row__num">{num}</span>
+                <div>
+                  <p className="project-row__name">
+                    {name} <em>{sub}</em>
+                  </p>
+                </div>
+                <p className="project-row__desc">{desc}</p>
+                <span className="project-row__arrow">{arrow || '↗'}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -255,7 +540,43 @@ export function AboutContent() {
       <footer className="foot">
         <span>{c.foot.left}</span>
         <span>{c.foot.right}</span>
+        <a
+          href="https://www.ruijadom.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontFamily:    'var(--serif)',
+            fontSize:      '0.58rem',
+            letterSpacing: '0.28em',
+            textTransform: 'uppercase',
+            color:         'var(--ink-faint)',
+            textDecoration: 'none',
+            transition:    'color 0.3s ease',
+            width:         '100%',
+            marginTop:     '1rem',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-soft)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-faint)' }}
+        >
+          created by ruijadom.com
+        </a>
       </footer>
+
+      {/* ── Photo carousel overlay ── */}
+      {activeRow && activePhotos.length > 0 && (
+        <PhotoCarousel
+          key={activeNum!}
+          photos={activePhotos}
+          name={activeRow.name}
+          num={activeRow.num}
+          href={activeRow.href}
+          arrow={activeRow.arrow}
+          verMas={c.carousel.verMas}
+          verProj={c.carousel.verProj}
+          closeLabel={c.carousel.close}
+          onClose={closeCarousel}
+        />
+      )}
 
     </div>
   )

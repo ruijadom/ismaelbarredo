@@ -1,32 +1,95 @@
 'use client'
 
-import Link from 'next/link'
+import {useEffect, useState} from 'react'
+import {usePathname, useRouter} from 'next/navigation'
 import {useLang} from '@/app/components/LanguageContext'
 
-export default function Header() {
-  const {lang, toggle} = useLang()
+// Header state: hidden (top of intro) → overlay (over dark 3D) → solid (editorial content)
+// Home page uses 500vh spacer; editorial content begins after innerHeight * 5.
+
+type HeaderState = 'hidden' | 'overlay' | 'solid'
+
+export default function GlobalHeader() {
+  const pathname          = usePathname()
+  const router            = useRouter()
+  const {lang, toggle}    = useLang()
+
+  const [scrollY, setScrollY] = useState(0)
+  const [vh,      setVh]      = useState(800)
+
+  useEffect(() => {
+    const update = () => {
+      setScrollY(window.scrollY)
+      setVh(window.innerHeight)
+    }
+    update()
+    window.addEventListener('scroll', update, {passive: true})
+    window.addEventListener('resize', update, {passive: true})
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
+  // Compute header state
+  let state: HeaderState
+  if (pathname !== '/') {
+    state = 'solid'
+  } else {
+    // on home: 500vh spacer → editorial content after 5 * vh
+    const inEditorial = scrollY > vh * 4.85
+    if (inEditorial) {
+      state = 'solid'
+    } else if (scrollY < vh * 0.3) {
+      state = 'hidden'
+    } else {
+      state = 'overlay'
+    }
+  }
+
+  const isHome  = pathname === '/'
+  const isAbout = pathname === '/about'
+
+  const labels = {
+    obra:  lang === 'es' ? 'obra'  : 'work',
+    sobre: lang === 'es' ? 'sobre' : 'about',
+  }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-10 py-6 bg-[#faf8f5]/85 backdrop-blur-md border-b border-[rgba(90,76,62,0.07)]">
-      <Link
-        href="/"
-        className="font-serif text-[0.9rem] tracking-[0.22em] lowercase text-[rgba(40,32,28,0.85)] no-underline"
+    <header className="chrome-header" data-state={state}>
+      {/* Wordmark */}
+      <button
+        className="chrome-wordmark"
+        onClick={() => { router.push('/') }}
+        aria-label="Invisibles — ir al inicio"
       >
         invisibles
-      </Link>
+      </button>
 
-      <nav className="flex items-center gap-8">
-        <Link
-          href="/about"
-          className="font-serif text-[0.72rem] tracking-[0.28em] lowercase text-[rgba(80,66,52,0.65)] no-underline hover:text-[rgba(40,32,28,0.85)] transition-colors duration-300"
+      {/* Nav */}
+      <nav className="chrome-nav">
+        <button
+          className={'chrome-link' + (isHome ? ' is-active' : '')}
+          onClick={() => router.push('/')}
         >
-          {lang === 'es' ? 'sobre' : 'about'}
-        </Link>
+          {labels.obra}
+        </button>
+
+        <span className="chrome-divider" aria-hidden />
 
         <button
+          className={'chrome-link' + (isAbout ? ' is-active' : '')}
+          onClick={() => router.push('/about')}
+        >
+          {labels.sobre}
+        </button>
+
+        <span className="chrome-divider" aria-hidden />
+
+        <button
+          className="chrome-link chrome-link--upper"
           onClick={toggle}
-          className="font-serif text-[0.62rem] tracking-[0.28em] uppercase text-[rgba(90,76,62,0.38)] hover:text-[rgba(90,76,62,0.75)] transition-colors duration-300 bg-transparent border-none cursor-pointer p-0"
-          aria-label="Switch language"
+          aria-label="Cambiar idioma"
         >
           {lang === 'es' ? 'en' : 'es'}
         </button>

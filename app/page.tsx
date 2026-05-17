@@ -1,9 +1,12 @@
 import {IntroAnimation} from '@/app/components/IntroAnimation'
+import {InvisiblesContent} from '@/app/components/InvisiblesContent'
 
-// The homepage is the immersive intro experience.
-// Navigation to /blog and /about appears after the animation settles.
-// Header and Footer are intentionally absent on this route —
-// they live in app/(site)/layout.tsx for all other pages.
+// Homepage = immersive 3D intro (500 vh scroll journey) → editorial Invisibles sections
 export default function Page() {
-  return <IntroAnimation />
+  return (
+    <>
+      <IntroAnimation />
+      <InvisiblesContent />
+    </>
+  )
 }

@@ -41,7 +41,6 @@ const copy = {
           label: 'Formato Videoarte',
           items: [
             {text: 'Trailer videoarte', href: 'https://youtu.be/I35ExmFIU8c'},
-            {text: 'Proyecto completo', href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
           ],
         },
         {
@@ -101,7 +100,6 @@ const copy = {
           label: 'Video Art Format',
           items: [
             {text: 'Video art trailer', href: 'https://youtu.be/I35ExmFIU8c'},
-            {text: 'Full project',      href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
           ],
         },
         {

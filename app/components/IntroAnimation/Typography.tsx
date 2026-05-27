@@ -143,6 +143,7 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
         initial={{opacity: 0, y: 12}}
         animate={navVisible ? {opacity: 1, y: 0} : {opacity: 0, y: 12}}
         transition={{duration: 1.8, ease: 'easeOut'}}
+        className="intro-nav"
         style={{
           position: 'absolute',
           bottom: '3.5rem',

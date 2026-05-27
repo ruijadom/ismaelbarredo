@@ -502,6 +502,7 @@ img { display: block; max-width: 100%; }
 ============================================================ */
 
 @media (max-width: 760px) {
+  .intro-nav { display: none !important; }
   .gallery, .gallery--wide { grid-template-columns: 1fr; }
   .ficha { grid-template-columns: 1fr; gap: 4px 0; }
   .ficha dt { padding-top: 18px; }

@@ -5,6 +5,7 @@ import {motion, useMotionValue} from 'framer-motion'
 import {useRouter} from 'next/navigation'
 import dynamic from 'next/dynamic'
 import {Typography} from './Typography'
+import {Scene3DErrorBoundary} from './Scene3DErrorBoundary'
 import {useLang} from '@/app/components/LanguageContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,7 +16,7 @@ interface MousePosition { x: number; y: number }
 
 const DARK_HOLD_MS = 2200
 const EMERGENCE_MS = 3500
-const NAV_DELAY_MS = DARK_HOLD_MS + 5500
+const NAV_DELAY_MS = DARK_HOLD_MS + 2800   // nav links appear ~5 s after load (was 7.7 s)
 
 // ─── Dynamic import (WebGL client-only) ──────────────────────────────────────
 
@@ -186,8 +187,10 @@ export function IntroAnimation() {
 
   return (
     <>
-      {/* ── Fixed 3D scene ── */}
-      <Scene3D mouseRef={mouseRef} scrollProgress={scrollProgressRef} emergence={emergenceRef} />
+      {/* ── Fixed 3D scene (wrapped in error boundary for WebGL failures) ── */}
+      <Scene3DErrorBoundary>
+        <Scene3D mouseRef={mouseRef} scrollProgress={scrollProgressRef} emergence={emergenceRef} />
+      </Scene3DErrorBoundary>
 
       {/* ── Fixed typography overlay (fades at ~45% scroll) ── */}
       <Typography

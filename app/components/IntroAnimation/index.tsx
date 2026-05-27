@@ -5,7 +5,6 @@ import {motion, useMotionValue} from 'framer-motion'
 import {useRouter} from 'next/navigation'
 import dynamic from 'next/dynamic'
 import {Typography} from './Typography'
-import {AudioEngine} from './AudioEngine'
 import {useLang} from '@/app/components/LanguageContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,19 +34,16 @@ export function IntroAnimation() {
   const scrollProgressRef = useRef<number>(0)
   const emergenceRef      = useRef<number>(0)
   const scrollMV          = useMotionValue(0)
-  const audioFadeRef      = useRef<(() => void) | null>(null)
   const lenisRef          = useRef<import('lenis').default | null>(null)
+  const navTimeoutRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [typoVisible,   setTypoVisible]   = useState(false)
   const [navVisible,    setNavVisible]    = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [lightStage,    setLightStage]    = useState(false)
-  const [inContent,     setInContent]     = useState(false)  // past 500 vh spacer
-  const lightStageRef         = useRef(false)
-  const lightStageTimeRef     = useRef(0)       // timestamp when Zone 3 first triggered
-  const hasEnteredContentRef  = useRef(false)  // stays true after first content entry
+  const lightStageRef = useRef(false)
 
-  const tagline = lang === 'es' ? 'lo que no se ve, también duele' : 'what you cannot see, still hurts'
+  const tagline = lang === 'es' ? 'músico · compositor · artista visual · musicoterapeuta · educador social' : 'musician · composer · visual artist · music therapist · social educator'
 
   // ── Reset scroll on mount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -89,10 +85,6 @@ export function IntroAnimation() {
     let lenisInstance: import('lenis').default | null = null
     let rafId: number
 
-    // Scroll-gate state — local to this effect, no re-renders needed
-    let scrollLocked    = false   // true while held at end of spacer
-    let contentUnlocked = false   // true once cream has fully established
-
     const initLenis = async () => {
       const {default: Lenis} = await import('lenis')
       lenisInstance = new Lenis({
@@ -114,55 +106,38 @@ export function IntroAnimation() {
         scrollProgressRef.current = introProgress
         scrollMV.set(introProgress)
 
-        // ── Zone 3 forward — cream dissolve at 82 % of intro journey (~410 vh)
-        if (introProgress > 0.82 && !lightStageRef.current) {
+        // ── Zone 3 forward — cream dissolve at 66 % of intro journey (~330 vh)
+        // Lock scroll immediately and navigate to /about once cream is established.
+        if (introProgress > 0.66 && !lightStageRef.current) {
           lightStageRef.current = true
-          lightStageTimeRef.current = performance.now()
           setLightStage(true)
+          lenisInstance?.stop()
+          navTimeoutRef.current = setTimeout(() => {
+            router.push('/about')
+          }, 2400) // cream fade (2 s) + 400 ms buffer
         }
 
-        // ── Zone 3 reverse — reset cream when scrolled back below 70 %
-        // This lets the animation + title replay if the user returns to the intro
-        if (introProgress < 0.70 && lightStageRef.current) {
-          lightStageRef.current          = false
-          hasEnteredContentRef.current   = false
+        // ── Zone 3 reverse — cancel navigation if user scrolls back below 55 %
+        if (introProgress < 0.55 && lightStageRef.current) {
+          lightStageRef.current = false
           setLightStage(false)
-        }
-
-        // ── Gate — hold scroll at end of spacer until cream has been visible long enough
-        // The minimum display time is 1 400 ms. If the user scrolled slowly and Zone 3
-        // has already been showing for longer, we skip the lock entirely and proceed immediately.
-        if (introProgress >= 1 && !contentUnlocked && !scrollLocked) {
-          const elapsed   = performance.now() - lightStageTimeRef.current
-          const MIN_MS    = 1400
-          const remaining = Math.max(0, MIN_MS - elapsed)
-
-          if (remaining === 0) {
-            // Cream already established — unlock right away, no lock needed
-            contentUnlocked = true
-          } else {
-            // Brief pause so the cream has a moment to settle
-            scrollLocked = true
-            lenisInstance?.stop()
-            setTimeout(() => {
-              contentUnlocked = true
-              scrollLocked = false
-              lenisInstance?.start()
-            }, remaining)
+          if (navTimeoutRef.current !== null) {
+            clearTimeout(navTimeoutRef.current)
+            navTimeoutRef.current = null
           }
+          lenisInstance?.start()
         }
-
-        // ── Detect when user has entered the editorial content (past 500 vh)
-        const inEdit = scroll > window.innerHeight * 4.85
-        if (inEdit) hasEnteredContentRef.current = true
-        setInContent(inEdit)
       })
 
       const loop = (time: number) => { lenisInstance?.raf(time); rafId = requestAnimationFrame(loop) }
       rafId = requestAnimationFrame(loop)
     }
     initLenis()
-    return () => { cancelAnimationFrame(rafId); lenisInstance?.destroy() }
+    return () => {
+      cancelAnimationFrame(rafId)
+      lenisInstance?.destroy()
+      if (navTimeoutRef.current !== null) clearTimeout(navTimeoutRef.current)
+    }
   }, [scrollMV])
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -200,7 +175,7 @@ export function IntroAnimation() {
         <h1 style={{
           color: '#e8e4e0', fontFamily: 'var(--serif)', fontWeight: 300,
           fontSize: 'clamp(1.8rem, 4vw, 3.5rem)', letterSpacing: '0.35em', textTransform: 'lowercase',
-        }}>invisibles</h1>
+        }}>ismael barredo</h1>
         <p style={{
           color: 'rgba(195, 190, 215, 0.6)', fontFamily: 'var(--serif)',
           fontStyle: 'italic', fontSize: '0.8rem', letterSpacing: '0.25em',
@@ -222,14 +197,6 @@ export function IntroAnimation() {
         onNavigate={navigateWithBowl}
       />
 
-      {/* ── Audio engine ── */}
-      <AudioEngine
-        scrollProgress={scrollProgressRef}
-        mousePosition={mouseRef}
-        inContent={inContent}
-        onRegisterFade={(fn) => { audioFadeRef.current = fn }}
-      />
-
       {/* ── Zone 3: cream dissolve transition ─────────────────────────────────
            Fades in at 82 % of the 500 vh intro scroll.
            Acts as a seamless visual bridge into the cream editorial content below.
@@ -239,22 +206,20 @@ export function IntroAnimation() {
       ── */}
       <motion.div
         initial={false}
-        animate={{
-          opacity: lightStage && !inContent && !hasEnteredContentRef.current ? 1 : 0,
-        }}
-        transition={{duration: inContent ? 1.2 : 6, ease: 'easeInOut'}}
+        animate={{opacity: lightStage ? 1 : 0}}
+        transition={{duration: lightStage ? 2.0 : 0.6, ease: 'easeInOut'}}
         style={{
-          position:         'fixed',
-          inset:            0,
-          zIndex:           20,
-          backgroundColor:  'rgba(244, 241, 234, 0.97)',   /* matches --bg */
-          pointerEvents:    'none',
+          position:        'fixed',
+          inset:           0,
+          zIndex:          20,
+          backgroundColor: 'rgba(244, 241, 234, 0.97)',
+          pointerEvents:   'none',
         }}
       />
 
       {/* ── Accessibility skip link ── */}
       <a
-        href="#invisibles-content"
+        href="#ismael-content"
         style={{
           position: 'fixed', top: '-9999px', left: '1rem',
           zIndex: 300, color: '#e8e4e0', background: '#020204', padding: '0.5rem 1rem',

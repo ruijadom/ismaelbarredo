@@ -20,18 +20,24 @@ interface AnimatedCharProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TITLE = 'invisibles'
+const TITLE = 'ismael barredo'
 
 const TEXT = {
   es: {
-    subtitle: 'lo que no se ve, también duele',
-    enter: 'entrar',
-    about: 'sobre',
+    subtitle:  'músico · compositor · artista visual · musicoterapeuta · educador social',
+    enter:     'entrar',
+    bio:        'bio',
+    invisibles: 'invisibles',
+    musica:     'música',
+    scrollHint: 'sumérgete',
   },
   en: {
-    subtitle: 'what you cannot see, still hurts',
-    enter: 'enter',
-    about: 'about',
+    subtitle:   'musician · composer · visual artist · music therapist · social educator',
+    enter:      'enter',
+    bio:        'bio',
+    invisibles: 'invisibles',
+    musica:     'music',
+    scrollHint: 'immerse',
   },
 } as const
 
@@ -117,7 +123,7 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
       <motion.p
         key={lang}
         initial={{opacity: 0}}
-        animate={visible ? {opacity: 0.42} : {opacity: 0}}
+        animate={visible ? {opacity: 0.72} : {opacity: 0}}
         transition={{delay: titleDelay + 1.4, duration: 3.0, ease: 'easeOut'}}
         style={{
           fontSize: 'clamp(0.65rem, 1.4vw, 0.85rem)',
@@ -141,20 +147,20 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
           position: 'absolute',
           bottom: '3.5rem',
           display: 'flex',
-          gap: '3rem',
+          gap: '2.4rem',
           alignItems: 'center',
           pointerEvents: navVisible ? 'auto' : 'none',
         }}
         aria-label="Site navigation"
       >
+        {/* Bio */}
         <motion.button
           onClick={() => onNavigate('/about')}
-          whileHover={{opacity: 1}}
           style={{
             fontSize: '0.68rem',
             letterSpacing: '0.32em',
             textTransform: 'lowercase',
-            color: 'rgba(200, 196, 215, 0.55)',
+            color: 'rgba(220, 216, 232, 0.82)',
             fontFamily: 'Georgia, "Times New Roman", serif',
             background: 'none',
             border: 'none',
@@ -166,11 +172,67 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
             ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(232, 228, 224, 0.9)'
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(200, 196, 215, 0.55)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(220, 216, 232, 0.82)'
           }}
         >
-          {t.about}
+          {t.bio}
         </motion.button>
+
+        <span style={{width: '1px', height: '10px', background: 'rgba(195,190,215,0.40)', display: 'block'}} />
+
+        {/* Invisibles */}
+        <motion.button
+          onClick={() => onNavigate('/invisibles')}
+          style={{
+            fontSize: '0.68rem',
+            letterSpacing: '0.32em',
+            textTransform: 'lowercase',
+            color: 'rgba(220, 216, 232, 0.82)',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'color 0.4s ease',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(232, 228, 224, 0.9)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(220, 216, 232, 0.82)'
+          }}
+        >
+          {t.invisibles}
+        </motion.button>
+
+        <span style={{width: '1px', height: '10px', background: 'rgba(195,190,215,0.40)', display: 'block'}} />
+
+        {/* Música */}
+        <motion.button
+          onClick={() => onNavigate('/musica')}
+          style={{
+            fontSize: '0.68rem',
+            letterSpacing: '0.32em',
+            textTransform: 'lowercase',
+            color: 'rgba(220, 216, 232, 0.82)',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'color 0.4s ease',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(232, 228, 224, 0.9)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(220, 216, 232, 0.82)'
+          }}
+        >
+          {t.musica}
+        </motion.button>
+
+        <span style={{width: '1px', height: '10px', background: 'rgba(195,190,215,0.40)', display: 'block'}} />
 
         {/* ── Language toggle ── */}
         <motion.button
@@ -179,7 +241,7 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
             fontSize: '0.58rem',
             letterSpacing: '0.32em',
             textTransform: 'uppercase',
-            color: 'rgba(195, 190, 215, 0.35)',
+            color: 'rgba(195, 190, 215, 0.58)',
             fontFamily: 'Georgia, "Times New Roman", serif',
             background: 'none',
             border: 'none',
@@ -191,7 +253,7 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
             ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(195, 190, 215, 0.7)'
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(195, 190, 215, 0.35)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(195, 190, 215, 0.58)'
           }}
           aria-label="Switch language"
         >
@@ -240,12 +302,12 @@ export function Typography({visible, scrollMV, navVisible, onNavigate}: Typograp
 
           <span style={{
             fontFamily:    'Georgia, serif',
-            fontSize:      '0.49rem',
-            letterSpacing: '0.40em',
+            fontSize:      '0.68rem',
+            letterSpacing: '0.38em',
             textTransform: 'lowercase',
-            color:         'rgba(195, 190, 215, 0.28)',
+            color:         'rgba(195, 190, 215, 0.65)',
           }}>
-            scroll
+            {t.scrollHint}
           </span>
         </motion.div>
       </motion.div>

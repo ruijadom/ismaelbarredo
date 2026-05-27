@@ -1,61 +1,59 @@
 'use client'
 
-import Image from 'next/image'
-import {Fragment} from 'react'
+import {useState, useCallback} from 'react'
 import {useLang} from '@/app/components/LanguageContext'
+import {PhotoCarousel} from '@/app/components/PhotoCarousel'
+import {PhotoLightbox} from '@/app/components/PhotoLightbox'
 
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 const copy = {
   es: {
-    manifesto: {
-      eyebrow: 'invisibles · proyecto artístico',
-      lines:   ['Un proyecto que ', 'no se explica.', 'Se escucha, se respira,', 'se siente en el cuerpo.'],
+    hero: {
+      eyebrow: 'proyectos artísticos',
+      title:   'Invisibles',
+      sub:     'proyecto artístico hispano-portugués',
     },
     desc: {
       eyebrow: '— el proyecto',
-      lede:    'Un proyecto artístico hispano-portugués que explora la experiencia de las enfermedades invisibles a través del videoarte, la música en directo, la instalación audiovisual y el testimonio en primera persona.',
-      prose:   [
-        'La obra se sitúa entre el documental experimental, el cine expandido y la performance sonora contemporánea, proponiendo una experiencia perceptiva basada en la escucha, el cuerpo y la emoción.',
-        'Más que explicar, Invisibles busca hacer sentir aquello que el lenguaje suele dejar fuera: el dolor que no se ve, la fatiga que no se nombra, la presencia silenciosa de quienes habitan un cuerpo herido.',
+      paragraphs: [
+        'Invisibles es un proyecto artístico hispano-portugués que explora la experiencia de las enfermedades invisibles a través del videoarte, la música en directo, la instalación audiovisual y el testimonio en primera persona.',
+        'La propuesta nace de la necesidad de generar espacios de escucha y visibilización en torno a realidades frecuentemente silenciadas o incomprendidas, utilizando el lenguaje artístico como herramienta de conexión humana, empatía y reflexión colectiva.',
+        'El proyecto se articula mediante una serie de piezas audiovisuales construidas a partir de relatos reales de personas que conviven con distintas enfermedades invisibles. A través de la integración de imagen, composición sonora y voz testimonial, Invisibles desarrolla una experiencia inmersiva donde lo visual, lo emocional y lo sonoro funcionan como una misma estructura narrativa y sensorial.',
+        'La obra se sitúa entre el documental experimental, el cine expandido, la instalación audiovisual y la performance sonora contemporánea, proponiendo una experiencia perceptiva basada en la escucha, el cuerpo y la emoción. Más que explicar, Invisibles busca hacer sentir.',
+        'El proyecto puede presentarse tanto en formato de instalación audiovisual inmersiva como en formato performativo en directo. En su dimensión instalativa, las piezas se reproducen de forma simultánea en distintos dispositivos o proyecciones, permitiendo al espectador recorrer libremente diferentes atmósferas vinculadas a la experiencia de la enfermedad invisible. En el formato performativo, la música se construye en tiempo real mediante loops, instrumentos acústicos y electrónicos, activando el universo audiovisual desde una dimensión viva y profundamente emocional.',
+        'Además de su dimensión artística, Invisibles incorpora acciones de mediación y contextos de diálogo orientados a centros educativos, espacios culturales y proyectos sociales, integrando herramientas vinculadas a la escucha activa, la experiencia emocional y la reflexión colectiva.',
+        'El proyecto ha sido presentado en teatros, centros culturales y espacios artísticos de España y Portugal, desarrollando formatos híbridos que combinan instalación, performance audiovisual y creación sonora en directo.',
       ],
     },
     gallery: {
-      eyebrow: 'material audiovisual',
+      eyebrow: '— imágenes',
       items: [
-        {caption: 'Trailer videoarte',    num: '01', href: 'https://youtu.be/I35ExmFIU8c',                       img: '/images/invisibles-1.jpg'},
-        {caption: 'Trailer performativo', num: '02', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I',         img: '/images/invisibles-2.jpg'},
-      ],
-      links: [
-        {label: 'ver trailer videoarte',    href: 'https://youtu.be/I35ExmFIU8c'},
-        {label: 'ver trailer performativo', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I'},
-        {label: 'proyecto completo',        href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
+        {img: '/images/invisibles-3.jpg', alt: 'Invisibles · instalación audiovisual'},
+        {img: '/images/invisibles-1.jpg', alt: 'Invisibles · performance audiovisual'},
+        {img: '/images/invisibles-2.jpg', alt: 'Invisibles · espacio de escucha'},
       ],
     },
-    ficha: {
-      eyebrow: '— ficha técnica',
-      rows: [
-        {dt: 'dirección',       dd: 'Ismael Barredo'},
-        {dt: 'música original', dd: 'Ismael Barredo · handpan, electrónica, paisajes sonoros'},
-        {dt: 'videoarte',       dd: 'Colaboración con artistas visuales hispano-portugueses'},
-        {dt: 'duración',        dd: '60 minutos'},
-        {dt: 'formato',         dd: 'Performance audiovisual · instalación adaptable'},
-        {dt: 'idioma',          dd: 'Español, portugués, gallego'},
-        {dt: 'público',         dd: 'Recomendado a partir de 16 años'},
-        {dt: 'territorio',      dd: 'España · Portugal'},
-      ],
-    },
-    agenda: {
-      eyebrow: '— próximas fechas',
-      rows: [
-        {date: '11 may 2026', venue: 'Auditorio Municipal',          city: 'Pontevedra · estreno', cta: 'finalizado', past: true,  href: ''},
-        {date: '14 jun 2026', venue: 'Teatro Principal',             city: 'Pontevedra, Galicia',  cta: 'entradas →',  past: false, href: ''},
-        {date: '02 jul 2026', venue: 'Festival Cinhomenagem',        city: 'Porto, Portugal',      cta: 'entradas →',  past: false, href: ''},
-        {date: '28 sep 2026', venue: 'Centro Cultural Conde Duque',  city: 'Madrid, España',       cta: 'próximamente',past: false, href: ''},
+    links: {
+      eyebrow: '— material audiovisual',
+      groups: [
+        {
+          label: 'Formato Videoarte',
+          items: [
+            {text: 'Trailer videoarte', href: 'https://youtu.be/I35ExmFIU8c'},
+            {text: 'Proyecto completo', href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
+          ],
+        },
+        {
+          label: 'Formato Performativo',
+          items: [
+            {text: 'Trailer performativo', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I'},
+          ],
+        },
       ],
     },
     contact: {
-      eyebrow: '— programación · booking',
+      eyebrow: 'programación · booking',
       line:    'Para programar Invisibles en tu sala, festival o espacio:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
@@ -69,55 +67,53 @@ const copy = {
       right: 'invisibles — lo que no se ve, también duele',
     },
   },
+
   en: {
-    manifesto: {
-      eyebrow: 'invisibles · artistic project',
-      lines:   ['A project that ', 'cannot be explained.', 'It is listened to, breathed,', 'felt in the body.'],
+    hero: {
+      eyebrow: 'artistic projects',
+      title:   'Invisibles',
+      sub:     'spanish-portuguese artistic project',
     },
     desc: {
       eyebrow: '— the project',
-      lede:    'A Spanish-Portuguese artistic project exploring the experience of invisible illnesses through video art, live music, audiovisual installation, and first-person testimony.',
-      prose:   [
-        'The work sits between experimental documentary, expanded cinema, and contemporary sound performance — proposing a perceptual experience based on listening, the body, and emotion.',
-        'More than explaining, Invisibles seeks to make you feel what language usually leaves out: pain that cannot be seen, fatigue that has no name, the silent presence of those who inhabit a wounded body.',
+      paragraphs: [
+        'Invisibles is a Spanish-Portuguese artistic project that explores the experience of invisible illnesses through video art, live music, audiovisual installation, and first-person testimony.',
+        'The proposal emerges from the need to create spaces of listening and visibility around realities that are frequently silenced or misunderstood, using artistic language as a tool for human connection, empathy, and collective reflection.',
+        'The project is articulated through a series of audiovisual pieces built from the real accounts of people living with different invisible illnesses. Through the integration of image, sound composition, and testimonial voice, Invisibles develops an immersive experience where the visual, the emotional, and the sonic operate as a single narrative and sensory structure.',
+        'The work sits between experimental documentary, expanded cinema, audiovisual installation, and contemporary sound performance, proposing a perceptual experience based on listening, the body, and emotion. More than explaining, Invisibles seeks to make you feel.',
+        'The project can be presented both as an immersive audiovisual installation and in a live performative format. In its installation dimension, the pieces play simultaneously on different devices or projections, allowing the viewer to move freely through different atmospheres connected to the experience of invisible illness. In the performative format, the music is built in real time through loops, acoustic and electronic instruments, activating the audiovisual universe from a living and deeply emotional dimension.',
+        'Beyond its artistic dimension, Invisibles incorporates mediation actions and dialogue contexts oriented towards educational centres, cultural spaces, and social projects, integrating tools linked to active listening, emotional experience, and collective reflection.',
+        'The project has been presented in theatres, cultural centres, and artistic spaces in Spain and Portugal, developing hybrid formats that combine installation, audiovisual performance, and live sound creation.',
       ],
     },
     gallery: {
-      eyebrow: 'audiovisual material',
+      eyebrow: '— images',
       items: [
-        {caption: 'Video art trailer',    num: '01', href: 'https://youtu.be/I35ExmFIU8c',                       img: '/images/invisibles-1.jpg'},
-        {caption: 'Performative trailer', num: '02', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I',         img: '/images/invisibles-2.jpg'},
-      ],
-      links: [
-        {label: 'watch video art trailer',    href: 'https://youtu.be/I35ExmFIU8c'},
-        {label: 'watch performative trailer', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I'},
-        {label: 'full project',               href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
+        {img: '/images/invisibles-3.jpg', alt: 'Invisibles · audiovisual installation'},
+        {img: '/images/invisibles-1.jpg', alt: 'Invisibles · audiovisual performance'},
+        {img: '/images/invisibles-2.jpg', alt: 'Invisibles · listening space'},
       ],
     },
-    ficha: {
-      eyebrow: '— technical sheet',
-      rows: [
-        {dt: 'direction',        dd: 'Ismael Barredo'},
-        {dt: 'original music',   dd: 'Ismael Barredo · handpan, electronics, soundscapes'},
-        {dt: 'video art',        dd: 'Collaboration with Spanish-Portuguese visual artists'},
-        {dt: 'duration',         dd: '60 minutes'},
-        {dt: 'format',           dd: 'Audiovisual performance · adaptable installation'},
-        {dt: 'language',         dd: 'Spanish, Portuguese, Galician'},
-        {dt: 'audience',         dd: 'Recommended 16+'},
-        {dt: 'territory',        dd: 'Spain · Portugal'},
-      ],
-    },
-    agenda: {
-      eyebrow: '— upcoming dates',
-      rows: [
-        {date: '11 may 2026', venue: 'Auditorio Municipal',          city: 'Pontevedra · premiere', cta: 'finished',    past: true,  href: ''},
-        {date: '14 jun 2026', venue: 'Teatro Principal',             city: 'Pontevedra, Galicia',   cta: 'tickets →',   past: false, href: ''},
-        {date: '02 jul 2026', venue: 'Festival Cinhomenagem',        city: 'Porto, Portugal',       cta: 'tickets →',   past: false, href: ''},
-        {date: '28 sep 2026', venue: 'Centro Cultural Conde Duque',  city: 'Madrid, Spain',         cta: 'coming soon', past: false, href: ''},
+    links: {
+      eyebrow: '— audiovisual material',
+      groups: [
+        {
+          label: 'Video Art Format',
+          items: [
+            {text: 'Video art trailer', href: 'https://youtu.be/I35ExmFIU8c'},
+            {text: 'Full project',      href: 'https://youtube.com/playlist?list=PLigjdb67OBM8Tv_7iZkoEdnZ69ulqN8J-&si=dMf9DRhr6jAZgpnt'},
+          ],
+        },
+        {
+          label: 'Performative Format',
+          items: [
+            {text: 'Performative trailer', href: 'https://www.youtube.com/watch?v=-WrDiiHHN0I'},
+          ],
+        },
       ],
     },
     contact: {
-      eyebrow: '— booking · programming',
+      eyebrow: 'booking · programming',
       line:    'To book Invisibles for your venue, festival or space:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
@@ -139,148 +135,74 @@ export function InvisiblesContent() {
   const {lang} = useLang()
   const c = copy[lang]
 
+  const galleryPhotos = c.gallery.items.map(({img, alt}) => ({src: img, alt}))
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  const openLightbox  = useCallback((i: number) => setLightboxIdx(i), [])
+  const closeLightbox = useCallback(() => setLightboxIdx(null), [])
+
   return (
     <div className="page" id="invisibles-content">
 
-      {/* ── Manifesto ── */}
-      <section className="section section--airy">
-        <div className="col">
-          <p className="eyebrow">{c.manifesto.eyebrow}</p>
-          <h2 className="manifesto">
-            {c.manifesto.lines[0]}<em>{c.manifesto.lines[1]}</em><br />
-            {c.manifesto.lines[2]}<br />
-            {c.manifesto.lines[3]}
-          </h2>
-        </div>
+      {/* ── Hero ── */}
+      <section className="about-hero">
+        <p className="eyebrow" style={{marginBottom: '1.5rem'}}>{c.hero.eyebrow}</p>
+        <h1 className="about-hero__name">{c.hero.title}</h1>
+        <p className="about-hero__role">{c.hero.sub}</p>
       </section>
 
-      {/* ── Descripción ── */}
+      {/* ── Carousel full-bleed ── */}
+      <div style={{width: '100%', lineHeight: 0}}>
+        <PhotoCarousel photos={galleryPhotos} aspectRatio="16/9" onOpen={openLightbox} />
+      </div>
+
+      {/* ── Texto del proyecto ── */}
       <section className="section">
         <div className="col">
           <p className="eyebrow">{c.desc.eyebrow}</p>
-          <p className="lede">{c.desc.lede}</p>
           <div className="prose">
-            {c.desc.prose.map((p, i) => (
-              <p key={i}>{i === 0 ? <em>{p}</em> : p}</p>
+            {c.desc.paragraphs.map((p, i) => (
+              <p key={i} style={i === 0 ? {fontStyle: 'italic'} : undefined}>{p}</p>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Galería audiovisual ── */}
-      <section className="section section--tight">
-        <div className="col--full">
-          <p className="eyebrow" style={{textAlign: 'center', marginBottom: 48}}>{c.gallery.eyebrow}</p>
-
-          <div className="gallery gallery--wide">
-            {c.gallery.items.map(({caption, num, href, img}) => (
-              <a
-                key={num}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="gallery-item"
-                style={{display: 'block', color: 'inherit', cursor: 'pointer'}}
-              >
-                <div style={{position: 'relative', width: '100%', aspectRatio: '16/10', background: '#1a1a1a', overflow: 'hidden'}}>
-                  <Image
-                    src={img}
-                    alt={caption}
-                    fill
-                    style={{objectFit: 'cover', opacity: 0.85}}
-                    sizes="(max-width: 760px) 100vw, 55vw"
-                  />
-                  <div className="play-overlay">
-                    <div className="play-overlay__circle">▶</div>
-                  </div>
-                </div>
-                <div className="gallery-item__caption">
-                  <span>{caption}</span>
-                  <span className="gallery-item__num">{num}</span>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          <div className="trailers">
-            {c.gallery.links.map(({label, href}) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="trailer"
-              >
-                <span className="trailer__tri" />
-                <span>{label}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Instalación — full-bleed image ── */}
-      {/* <section className="section section--tight">
-        <div className="col--full">
-          <div style={{position: 'relative', width: '100%', aspectRatio: '21/9', background: '#1a1a1a', overflow: 'hidden'}}>
-            <Image
-              src="/images/invisibles-1.jpg"
-              alt="Invisibles · instalación audiovisual"
-              fill
-              style={{objectFit: 'cover'}}
-              sizes="100vw"
-            />
-          </div>
-          <p style={{
-            marginTop: 18,
-            fontStyle: 'italic',
-            fontSize: 14,
-            color: 'var(--ink-soft)',
-            textAlign: 'right',
-            letterSpacing: '0.02em',
-            fontFamily: 'var(--serif)',
-          }}>
-            Invisibles · instalación audiovisual
-          </p>
-        </div>
-      </section> */}
-
-      {/* ── Ficha técnica ── */}
-      <section className="section">
+      {/* ── Links audiovisuales ── */}
+      <section className="section" style={{borderTop: '1px solid var(--rule-soft)'}}>
         <div className="col">
-          <p className="eyebrow">{c.ficha.eyebrow}</p>
-          <dl className="ficha">
-            {c.ficha.rows.map(({dt, dd}) => (
-              <Fragment key={dt}>
-                <dt>{dt}</dt>
-                <dd>{dd}</dd>
-              </Fragment>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* ── Agenda ── */}
-      {/* <section className="section">
-        <div className="col">
-          <p className="eyebrow">{c.agenda.eyebrow}</p>
-          <div className="agenda">
-            {c.agenda.rows.map(({date, venue, city, cta, past, href}) => (
-              <div key={date + venue} className="agenda-row">
-                <span className="agenda-date">{date}</span>
-                <span className="agenda-venue">{venue}</span>
-                <span className="agenda-city">{city}</span>
-                {href ? (
-                  <a href={href} target="_blank" rel="noopener noreferrer"
-                    className={'agenda-cta' + (past ? ' agenda-cta--past' : '')}>{cta}</a>
-                ) : (
-                  <span className={'agenda-cta' + (past ? ' agenda-cta--past' : '')}>{cta}</span>
-                )}
+          <p className="eyebrow">{c.links.eyebrow}</p>
+          <div style={{display: 'flex', flexDirection: 'column', gap: '36px'}}>
+            {c.links.groups.map(({label, items}) => (
+              <div key={label}>
+                <p style={{
+                  fontFamily:    'var(--serif)',
+                  fontSize:      '12px',
+                  letterSpacing: '0.30em',
+                  textTransform: 'lowercase',
+                  color:         'var(--ink-faint)',
+                  marginBottom:  '14px',
+                }}>
+                  {label}
+                </p>
+                <div className="trailers" style={{marginTop: 0}}>
+                  {items.map(({text, href}) => (
+                    <a
+                      key={text}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="trailer"
+                    >
+                      <span className="trailer__tri" />
+                      <span>{text}</span>
+                    </a>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* ── Contacto / Booking ── */}
       <section className="section section--airy contact">
@@ -289,6 +211,7 @@ export function InvisiblesContent() {
           <p className="eyebrow" style={{marginBottom: 0}}>{c.contact.eyebrow}</p>
           <p className="contact__line">{c.contact.line}</p>
           <a className="contact__email" href={`mailto:${c.contact.email}`}>{c.contact.email}</a>
+          <a className="contact__email" href="tel:+34669938272">(+34) 669 938 272</a>
           <div className="contact__socials">
             {c.contact.socials.map(({label, href}) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label}</a>
@@ -300,20 +223,21 @@ export function InvisiblesContent() {
       {/* ── Footer ── */}
       <footer className="foot">
         <span>{c.foot.left}</span>
+        <span>{c.foot.right}</span>
         <a
           href="https://www.ruijadom.com/"
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            fontFamily:    'var(--serif)',
-            fontSize:      '0.58rem',
-            letterSpacing: '0.28em',
-            textTransform: 'uppercase',
-            color:         'var(--ink-faint)',
+            fontFamily:     'var(--serif)',
+            fontSize:       '0.58rem',
+            letterSpacing:  '0.28em',
+            textTransform:  'uppercase',
+            color:          'var(--ink-faint)',
             textDecoration: 'none',
-            transition:    'color 0.3s ease',
-            width:         '100%',
-            marginTop:     '1rem',
+            transition:     'color 0.3s ease',
+            width:          '100%',
+            marginTop:      '1rem',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-soft)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-faint)' }}
@@ -321,6 +245,17 @@ export function InvisiblesContent() {
           created by ruijadom.com
         </a>
       </footer>
+
+      {/* ── Photo lightbox overlay ── */}
+      {lightboxIdx !== null && (
+        <PhotoLightbox
+          key={lightboxIdx}
+          photos={galleryPhotos}
+          startIdx={lightboxIdx}
+          closeLabel={lang === 'es' ? 'cerrar' : 'close'}
+          onClose={closeLightbox}
+        />
+      )}
 
     </div>
   )

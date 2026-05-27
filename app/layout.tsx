@@ -4,6 +4,7 @@ import type {Metadata} from 'next'
 import {Cormorant_Garamond} from 'next/font/google'
 import {LanguageProvider} from '@/app/components/LanguageContext'
 import GlobalHeader from '@/app/components/Header'
+import {AudioPlayer} from '@/app/components/AudioPlayer'
 
 const cormorant = Cormorant_Garamond({
   subsets:  ['latin'],
@@ -14,8 +15,8 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  title:       'invisibles',
-  description: 'lo que no se ve, también duele',
+  title:       'ismael barredo',
+  description: 'Músico · Compositor · Artista Visual · Musicoterapeuta · Educador Social',
 }
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
@@ -24,6 +25,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <body suppressHydrationWarning>
         <LanguageProvider>
           <GlobalHeader />
+          <AudioPlayer />
           {children}
         </LanguageProvider>
       </body>

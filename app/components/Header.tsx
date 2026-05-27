@@ -28,10 +28,31 @@ export default function GlobalHeader() {
     return () => window.removeEventListener('scroll', check)
   }, [isHome])
 
-  // Lock body scroll when menu open
+  // Lock body scroll when menu open (works on iOS Safari too)
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (menuOpen) {
+      const scrollY = window.scrollY
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.overflow   = 'hidden'
+      document.body.style.position   = 'fixed'
+      document.body.style.top        = `-${scrollY}px`
+      document.body.style.width      = '100%'
+    } else {
+      const top = document.body.style.top
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow   = ''
+      document.body.style.position   = ''
+      document.body.style.top        = ''
+      document.body.style.width      = ''
+      if (top) window.scrollTo(0, -parseInt(top, 10))
+    }
+    return () => {
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow   = ''
+      document.body.style.position   = ''
+      document.body.style.top        = ''
+      document.body.style.width      = ''
+    }
   }, [menuOpen])
 
   // Close on Escape

@@ -155,6 +155,9 @@ img { display: block; max-width: 100%; }
   justify-content: center;
   opacity: 0;
   transition: opacity 360ms ease;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 .mobile-menu--open { opacity: 1; }
 

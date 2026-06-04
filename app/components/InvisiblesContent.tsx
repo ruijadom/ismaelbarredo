@@ -56,7 +56,7 @@ const copy = {
       line:    'Para programar Invisibles en tu sala, festival o espacio:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
-        {label: 'instagram', href: 'https://www.instagram.com/musictomove/'},
+        {label: 'instagram', href: 'https://www.instagram.com/ismaelbarredomusic/'},
         {label: 'youtube',   href: 'https://www.youtube.com/@IsmaelBarredo_MusictoMove'},
         {label: 'facebook',  href: 'https://www.facebook.com/IsmaelBarredoMusictomove'},
       ],
@@ -115,7 +115,7 @@ const copy = {
       line:    'To book Invisibles for your venue, festival or space:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
-        {label: 'instagram', href: 'https://www.instagram.com/musictomove/'},
+        {label: 'instagram', href: 'https://www.instagram.com/ismaelbarredomusic/'},
         {label: 'youtube',   href: 'https://www.youtube.com/@IsmaelBarredo_MusictoMove'},
         {label: 'facebook',  href: 'https://www.facebook.com/IsmaelBarredoMusictomove'},
       ],

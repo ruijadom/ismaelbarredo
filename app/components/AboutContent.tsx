@@ -34,7 +34,7 @@ const copy = {
       line:    'Para conciertos, exposiciones, proyectos o colaboraciones:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
-        {label: 'instagram', href: 'https://www.instagram.com/musictomove/'},
+        {label: 'instagram', href: 'https://www.instagram.com/ismaelbarredomusic/'},
         {label: 'youtube',   href: 'https://www.youtube.com/@IsmaelBarredo_MusictoMove'},
         {label: 'facebook',  href: 'https://www.facebook.com/IsmaelBarredoMusictomove'},
       ],
@@ -70,7 +70,7 @@ const copy = {
       line:    'For concerts, exhibitions, projects or collaborations:',
       email:   'ismaelbarredo@gmail.com',
       socials: [
-        {label: 'instagram', href: 'https://www.instagram.com/musictomove/'},
+        {label: 'instagram', href: 'https://www.instagram.com/ismaelbarredomusic/'},
         {label: 'youtube',   href: 'https://www.youtube.com/@IsmaelBarredo_MusictoMove'},
         {label: 'facebook',  href: 'https://www.facebook.com/IsmaelBarredoMusictomove'},
       ],

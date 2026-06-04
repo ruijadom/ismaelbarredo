@@ -13,7 +13,6 @@ const copy = {
       role:    'handpan · music to move · live looping · ambient · ecstatic dance',
     },
     handpan: {
-      eyebrow:  '— handpan',
       title:    'Handpan',
       sub:      'conciertos contemplativos · experiencias sonoras',
       prose: [
@@ -22,20 +21,9 @@ const copy = {
         'Las actuaciones pueden desarrollarse tanto en formato acústico como amplificado, adaptándose a teatros, espacios naturales, centros culturales, eventos, ceremonias, retiros y experiencias inmersivas.',
       ],
       cta:   'ver más ↗',
-      href:  'https://youtu.be/mqqt1zcE23o?si=2ZEIpyXcCW3kXxdz',
-    },
-    musictomove: {
-      eyebrow: '— music to move',
-      title:   'Music to Move',
-      sub:     'electrónica orgánica · live looping · ambient · ecstatic dance',
-      prose: [
-        'Music to Move es el proyecto musical y performativo de Ismael Barredo, centrado en la exploración de experiencias inmersivas a través de la música electrónica orgánica, el ambient, el live looping y la creación sonora en tiempo real.',
-        'El proyecto combina instrumentos acústicos y electrónicos, sintetizadores, loops, texturas atmosféricas y construcción progresiva de capas sonoras para desarrollar sesiones que transitan entre la escucha inmersiva, la narrativa sonora y el movimiento colectivo.',
-        'Bajo el nombre de Music to Move conviven diferentes formatos, desde actuaciones de ambient y live looping hasta sesiones de Ecstatic Dance y propuestas híbridas donde música, visuales y performance se integran dentro de una misma experiencia audiovisual y espacial.',
-      ],
+      href:  'https://youtube.com/playlist?list=PLigjdb67OBM8mbEEhc00L9LSR1eU57WmT&si=pz_zNQuJ6TkHegcn',
     },
     liveloop: {
-      eyebrow: '— live looping · música ambient',
       title:   'Live Looping · Ambient',
       sub:     'live looping · electrónica orgánica',
       prose: [
@@ -47,8 +35,7 @@ const copy = {
       href:  'https://youtube.com/playlist?list=PLGd4ULnfIszWfs9jrn67DJhK1mo4UIeNG&si=ZBJtdPJfemTqkgWD',
     },
     ecstatic: {
-      eyebrow: '— music to move',
-      title:   'Ecstatic Dance',
+      title:   'Ecstatic Dance - Music to Move',
       sub:     'cuerpo en escucha · movimiento libre',
       prose: [
         'Estatic Dance es una propuesta orientada al movimiento libre y la construcción de recorridos musicales progresivos a través de la electrónica orgánica, tribal, melodic y ambient.',
@@ -56,7 +43,18 @@ const copy = {
         'La propuesta puede incorporar elementos de live looping, instrumentos orgánicos y visuales en directo como parte de la experiencia inmersiva.',
       ],
       cta:   'ver más ↗',
-      href:  'https://youtube.com/playlist?list=PLigjdb67OBM8tupNGErXxU_Z263LIe4IV&si=WmbcVBxspBvcqOqL',
+      href:  'https://youtube.com/playlist?list=PLGd4ULnfIszXYnjOHimx8bqWRjo3RJX6O&si=6E4cQdrqFPgXmaKv',
+    },
+    escena: {
+      title:   'Música para Escena',
+      sub:     'composición para teatro, cine y videojuegos · piezas audiovisuales',
+      prose: [
+        'Composición y desarrollo de piezas musicales originales para teatro, cine, videojuegos y proyectos audiovisuales, orientadas a la creación de atmósferas emocionales y narrativas sonoras al servicio de la imagen, el movimiento y la escena.',
+        'Trabajo de creación sonora adaptado a diferentes formatos escénicos y audiovisuales, integrando ambientación inmersiva, sensibilidad cinematográfica y construcción emocional a través del sonido.',
+        'También existe la posibilidad de realizar interpretación musical en directo, adaptando la composición al desarrollo de espectáculos, performances, proyecciones audiovisuales o visionados cinematográficos, generando una experiencia sonora más inmersiva y conectada con el momento escénico.',
+      ],
+      cta:   'ver más ↗',
+      href:  'https://youtube.com/playlist?list=PLigjdb67OBM8tupNGErXxU_Z263LIe4IV&si=LfP7dFqyQv95sHTR',
     },
     contact: {
       eyebrow: 'contacto · booking',
@@ -80,7 +78,6 @@ const copy = {
       role:    'handpan · music to move · live looping · ambient · ecstatic dance',
     },
     handpan: {
-      eyebrow:  '— handpan',
       title:    'Handpan',
       sub:      'contemplative concerts · sonic experiences',
       prose: [
@@ -92,7 +89,6 @@ const copy = {
       href:  'https://youtu.be/mqqt1zcE23o?si=2ZEIpyXcCW3kXxdz',
     },
     musictomove: {
-      eyebrow: '— music to move',
       title:   'Music to Move',
       sub:     'organic electronics · live looping · ambient · ecstatic dance',
       prose: [
@@ -102,7 +98,6 @@ const copy = {
       ],
     },
     liveloop: {
-      eyebrow: '— live looping · ambient music',
       title:   'Live Looping · Ambient',
       sub:     'live looping · organic electronics',
       prose: [
@@ -114,8 +109,7 @@ const copy = {
       href:  'https://youtube.com/playlist?list=PLGd4ULnfIszWfs9jrn67DJhK1mo4UIeNG&si=ZBJtdPJfemTqkgWD',
     },
     ecstatic: {
-      eyebrow: '— music to move',
-      title:   'Ecstatic Dance',
+      title:   'Ecstatic Dance - Music to Move',
       sub:     'body listening · free movement',
       prose: [
         'Ecstatic Dance is a proposal oriented towards free movement and the construction of progressive musical journeys through organic, tribal, melodic, and ambient electronics.',
@@ -124,6 +118,17 @@ const copy = {
       ],
       cta:   'watch more ↗',
       href:  'https://youtube.com/playlist?list=PLigjdb67OBM8tupNGErXxU_Z263LIe4IV&si=WmbcVBxspBvcqOqL',
+    },
+    escena: {
+      title:   'Music for Stage & Screen',
+      sub:     'composition for theatre, film and video games · audiovisual pieces',
+      prose: [
+        'Composition and development of original musical pieces for theatre, film, video games, and audiovisual projects, focused on creating emotional atmospheres and sonic narratives in service of image, movement, and scene.',
+        'Sound creation work adapted to different scenic and audiovisual formats, integrating immersive ambience, cinematic sensitivity, and emotional construction through sound.',
+        'Live musical performance is also possible, adapting composition to the development of shows, performances, audiovisual projections, or film screenings, generating a more immersive sonic experience connected to the scenic moment.',
+      ],
+      cta:   'watch more ↗',
+      href:  'https://youtube.com/playlist?list=PLigjdb67OBM8tupNGErXxU_Z263LIe4IV&si=LfP7dFqyQv95sHTR',
     },
     contact: {
       eyebrow: 'contact · booking',
@@ -145,7 +150,7 @@ const copy = {
 // ─── Música Section Block ────────────────────────────────────────────────────
 
 interface SectionBlockProps {
-  eyebrow:  string
+  eyebrow?:  string
   title:    string
   sub:      string
   prose:    readonly string[]
@@ -154,9 +159,10 @@ interface SectionBlockProps {
   img:      string
   imgAlt:   string
   reverse?: boolean
+  loading?: 'eager' | 'lazy'
 }
 
-function SectionBlock({eyebrow, title, sub, prose, cta, href, img, imgAlt, reverse}: SectionBlockProps) {
+function SectionBlock({eyebrow, title, sub, prose, cta, href, img, imgAlt, reverse, loading}: SectionBlockProps) {
   return (
     <section className="section musica-block" style={{borderTop: '1px solid var(--rule-soft)'}}>
       <div
@@ -177,12 +183,13 @@ function SectionBlock({eyebrow, title, sub, prose, cta, href, img, imgAlt, rever
             fill
             style={{objectFit: 'cover', opacity: 0.88}}
             sizes="(max-width: 760px) 100vw, 48vw"
+            loading={loading}
           />
         </div>
 
         {/* Text */}
         <div style={{direction: 'ltr'}}>
-          <p className="eyebrow">{eyebrow}</p>
+          {eyebrow && <p className="eyebrow">{eyebrow}</p>}
           <h2 style={{
             fontFamily:    'var(--serif-display)',
             fontWeight:    400,
@@ -269,7 +276,6 @@ export function MusicaContent() {
 
       {/* ── Handpan ── */}
       <SectionBlock
-        eyebrow={c.handpan.eyebrow}
         title={c.handpan.title}
         sub={c.handpan.sub}
         prose={c.handpan.prose}
@@ -277,23 +283,12 @@ export function MusicaContent() {
         href={c.handpan.href}
         img="/images/handpan-1.webp"
         imgAlt="Ismael Barredo · Handpan"
+        loading="eager"
         reverse={false}
-      />
-
-      {/* ── Music to Move ── */}
-      <SectionBlock
-        eyebrow={c.musictomove.eyebrow}
-        title={c.musictomove.title}
-        sub={c.musictomove.sub}
-        prose={c.musictomove.prose}
-        img="/images/live-looping-2.webp"
-        imgAlt="Ismael Barredo · Music to Move"
-        reverse={true}
       />
 
       {/* ── Live Looping / Ambient ── */}
       <SectionBlock
-        eyebrow={c.liveloop.eyebrow}
         title={c.liveloop.title}
         sub={c.liveloop.sub}
         prose={c.liveloop.prose}
@@ -301,12 +296,11 @@ export function MusicaContent() {
         href={c.liveloop.href}
         img="/images/mtm-live-1.jpg"
         imgAlt="Ismael Barredo · Live Looping"
-        reverse={false}
+        reverse={true}
       />
 
       {/* ── Ecstatic Dance ── */}
       <SectionBlock
-        eyebrow={c.ecstatic.eyebrow}
         title={c.ecstatic.title}
         sub={c.ecstatic.sub}
         prose={c.ecstatic.prose}
@@ -314,6 +308,19 @@ export function MusicaContent() {
         href={c.ecstatic.href}
         img="/images/mtm-ecstatic-1.jpg"
         imgAlt="Ismael Barredo · Ecstatic Dance"
+        reverse={false}
+      />
+
+
+      {/* ── Música para Escena ── */}
+      <SectionBlock
+        title={c.escena.title}
+        sub={c.escena.sub}
+        prose={c.escena.prose}
+        cta={c.escena.cta}
+        href={c.escena.href}
+        img="/images/bio-3.jpg"
+        imgAlt="Ismael Barredo · Música para Escena"
         reverse={true}
       />
 

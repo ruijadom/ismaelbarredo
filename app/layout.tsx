@@ -15,8 +15,30 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://ismaelbarredo.com'),
   title:       'ismael barredo',
   description: 'Músico · Compositor · Artista Visual · Musicoterapeuta · Educador Social',
+  openGraph: {
+    title:       'ismael barredo',
+    description: 'Músico · Compositor · Artista Visual · Musicoterapeuta · Educador Social',
+    url:         'https://ismaelbarredo.com',
+    siteName:    'ismael barredo',
+    images: [
+      {
+        url:    '/images/share-image.png',
+        width:  1200,
+        height: 630,
+        alt:    'ismael barredo',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       'ismael barredo',
+    description: 'Músico · Compositor · Artista Visual · Musicoterapeuta · Educador Social',
+    images:      ['/images/share-image.png'],
+  },
 }
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
